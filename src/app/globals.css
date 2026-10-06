@@ -1,26 +1,166 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ------------------------------
+     Base / Light
+  -------------------------------- */
+
+  --background: #f6f6f3;
+  --foreground: #18181b;
+
+  --surface: #ffffff;
+  --surface-subtle: #fafaf9;
+  --surface-elevated: #ffffff;
+
+  --border: #e5e5e2;
+  --border-subtle: #ededeb;
+
+  /* ------------------------------
+     Text
+  -------------------------------- */
+
+  --text-primary: #18181b;
+  --text-secondary: #71717a;
+  --text-muted: #a1a1aa;
+  --text-inverse: #ffffff;
+
+  /* ------------------------------
+     Brand
+  -------------------------------- */
+
+  --brand: #635bda;
+  --brand-hover: #574fcc;
+  --brand-active: #4f46c5;
+  --brand-subtle: #eeecff;
+  --brand-foreground: #ffffff;
+
+  /* ------------------------------
+     Semantic
+  -------------------------------- */
+
+  --success: #22a06b;
+  --success-subtle: #e9f8f1;
+  --success-foreground: #176342;
+
+  --warning: #c98719;
+  --warning-subtle: #fff6df;
+  --warning-foreground: #875c0b;
+
+  --danger: #d84b4b;
+  --danger-subtle: #fff0f0;
+  --danger-foreground: #9f3030;
+
+  --info: #3f82d7;
+  --info-subtle: #edf5ff;
+  --info-foreground: #285d9f;
+
+  /* ------------------------------
+     Radius
+  -------------------------------- */
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 9999px;
+
+  /* ------------------------------
+     Shadows
+  -------------------------------- */
+
+  --shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.04);
+
+  --shadow-md:
+    0 4px 12px rgba(0, 0, 0, 0.06);
+
+  --shadow-lg:
+    0 12px 30px rgba(0, 0, 0, 0.08);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* --------------------------------
+   Dark theme
+--------------------------------- */
+
+.dark {
+  --background: #0c0c0f;
+  --foreground: #f4f4f5;
+
+  --surface: #121216;
+  --surface-subtle: #101013;
+  --surface-elevated: #18181d;
+
+  --border: #29292f;
+  --border-subtle: #202025;
+
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-inverse: #18181b;
+
+  --brand: #756df0;
+  --brand-hover: #847cf5;
+  --brand-active: #665de5;
+  --brand-subtle: #211f3a;
+  --brand-foreground: #ffffff;
+
+  --success: #35c98a;
+  --success-subtle: #11291f;
+  --success-foreground: #7ce1b2;
+
+  --warning: #e0a33a;
+  --warning-subtle: #2a2110;
+  --warning-foreground: #f0c46e;
+
+  --danger: #ec6b6b;
+  --danger-subtle: #2d1717;
+  --danger-foreground: #f49a9a;
+
+  --info: #61a0e8;
+  --info-subtle: #132238;
+  --info-foreground: #91bff0;
+
+  --shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.25);
+
+  --shadow-md:
+    0 4px 16px rgba(0, 0, 0, 0.25);
+
+  --shadow-lg:
+    0 16px 40px rgba(0, 0, 0, 0.35);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* --------------------------------
+   Base
+--------------------------------- */
+
+html {
+  background: var(--background);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--border);
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--brand-subtle);
+  color: var(--text-primary);
 }
