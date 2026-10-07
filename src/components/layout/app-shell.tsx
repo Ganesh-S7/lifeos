@@ -21,7 +21,7 @@ export function AppShell({ children }: AppShellProps) {
       <div className="min-h-screen lg:pl-62">
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="px-4 py-6 sm:px-6 lg:px-4 lg:py-4">
           <div className="mx-auto w-full max-w-360">
             {children}
           </div>

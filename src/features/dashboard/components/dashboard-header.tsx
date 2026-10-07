@@ -13,7 +13,7 @@ export function DashboardHeader() {
                     Good morning, Ganesh.
                 </h1>
 
-                <p className="mt-2 max-w-xl text-sm leading-6 text-text-secondary">
+                <p className="mt-1 max-w-xl text-sm leading-6 text-text-secondary">
                     Here’s a quick look at how things are going across your life.
                 </p>
             </div>
