@@ -5,3 +5,4 @@ export * from "./icon-button";
 export * from "./input";
 export * from "./progress";
 export * from "./stat";
+export * from "./dialog";
