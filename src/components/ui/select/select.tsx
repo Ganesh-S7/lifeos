@@ -85,7 +85,13 @@ const Select = <T extends SelectValue>({
     };
 
     return (
-        <div className={cn("flex w-full flex-col gap-1.5", className)}>
+        <div
+            className={cn(
+                "flex flex-col gap-1.5",
+                label || error ? "w-full" : "w-auto",
+                className,
+            )}
+        >
             {label && (
                 <label
                     htmlFor={id}

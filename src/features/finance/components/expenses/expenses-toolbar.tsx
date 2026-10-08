@@ -4,13 +4,20 @@ import {
     X,
 } from "lucide-react";
 
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Select, SelectOption } from "@/components/ui";
 
 export type ExpenseSort =
     | "date-desc"
     | "date-asc"
     | "amount-desc"
     | "amount-asc";
+
+const sortOptions = [
+    { label: "Newest first", value: "date-desc" },
+    { label: "Oldest first", value: "date-asc" },
+    { label: "Highest amount", value: "amount-desc" },
+    { label: "Lowest amount", value: "amount-asc" },
+] satisfies SelectOption<ExpenseSort>[];
 
 interface ExpensesToolbarProps {
     search: string;
@@ -48,42 +55,38 @@ export function ExpensesToolbar({
                 />
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm">
                     <CalendarDays className="size-3.5" />
                     October 2026
                 </Button>
 
-                <select
-                    value={category}
-                    onChange={(event) => onCategoryChange(event.target.value)}
-                    className="h-8 rounded-md border border-border bg-surface px-3 text-xs font-medium text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                    aria-label="Filter by category"
-                >
-                    <option value="">All categories</option>
+                <Select
+                    value={category || null}
+                    options={[
+                        { label: "All categories", value: "all" },
+                        ...categories.map((item) => ({
+                            label: item,
+                            value: item,
+                        })),
+                    ]}
+                    onChange={(value) => onCategoryChange(value ?? "")}
+                    placeholder="Category"
+                    className="w-37.5"
+                    triggerClassName="h-8 min-w-[140px]"
+                />
 
-                    {categories?.map((item) => (
-                        <option key={item} value={item}>
-                            {item}
-                        </option>
-                    ))}
-                </select>
-
-                <div className="flex h-8 overflow-hidden rounded-md border border-border bg-surface">
-                    <select
-                        value={sort}
-                        onChange={(event) =>
-                            onSortChange(event.target.value as ExpenseSort)
+                <Select<ExpenseSort>
+                    value={sort}
+                    options={sortOptions}
+                    onChange={(value) => {
+                        if (value !== null) {
+                            onSortChange(value);
                         }
-                        className="h-full border-0 bg-transparent px-3 text-xs font-medium text-text-primary outline-none"
-                        aria-label="Sort expenses"
-                    >
-                        <option value="date-desc">Newest first</option>
-                        <option value="date-asc">Oldest first</option>
-                        <option value="amount-desc">Highest amount</option>
-                        <option value="amount-asc">Lowest amount</option>
-                    </select>
-                </div>
+                    }}
+                    className="w-37.5"
+                    triggerClassName="h-8 min-w-[150px] text-xs"
+                />
 
                 {hasActiveFilters && (
                     <Button

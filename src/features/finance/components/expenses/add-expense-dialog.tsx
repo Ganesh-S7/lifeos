@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
@@ -12,6 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
     Input,
+    Select,
 } from "@/components/ui";
 
 import {
@@ -25,20 +26,20 @@ interface AddExpenseDialogProps {
     onSubmit: (data: ExpenseFormValues) => void;
 }
 
-const categories = [
-    "Food",
-    "Shopping",
-    "Transport",
-    "Bills",
-    "Health",
-    "Entertainment",
-    "Other",
+const categoryOptions = [
+    { label: "Food", value: "Food" },
+    { label: "Shopping", value: "Shopping" },
+    { label: "Transport", value: "Transport" },
+    { label: "Bills", value: "Bills" },
+    { label: "Health", value: "Health" },
+    { label: "Entertainment", value: "Entertainment" },
+    { label: "Other", value: "Other" },
 ];
 
-const accounts = [
-    "Primary Account",
-    "Wallet",
-    "Savings",
+const accountOptions = [
+    { label: "Primary Account", value: "Primary Account" },
+    { label: "Wallet", value: "Wallet" },
+    { label: "Savings", value: "Savings" },
 ];
 
 function getTodayValue() {
@@ -60,13 +61,14 @@ export function AddExpenseDialog({
         register,
         handleSubmit,
         reset,
+        control,
         formState: { errors, isSubmitting },
     } = useForm<ExpenseFormValues>({
         resolver: zodResolver(expenseSchema),
         defaultValues: {
             amount: undefined,
             merchant: "",
-            category: "",
+            category: "Shopping",
             account: "Primary Account",
             date: getTodayValue(),
             note: "",
@@ -163,61 +165,39 @@ export function AddExpenseDialog({
 
                     {/* Category + Account */}
                     <div className="grid gap-5 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <label
-                                htmlFor="category"
-                                className="text-xs font-medium text-text-primary"
-                            >
-                                Category
-                            </label>
-
-                            <select
-                                id="category"
-                                {...register("category")}
-                                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                            >
-                                <option value="">Select category</option>
-
-                                {categories.map((category) => (
-                                    <option key={category} value={category}>
-                                        {category}
-                                    </option>
-                                ))}
-                            </select>
-
-                            {errors.category && (
-                                <p className="text-xs text-danger">
-                                    {errors.category.message}
-                                </p>
+                        <Controller
+                            name="category"
+                            control={control}
+                            render={({ field, fieldState }) => (
+                                <Select
+                                    id="category"
+                                    label="Category"
+                                    options={categoryOptions}
+                                    value={field.value}
+                                    onChange={(value) => field.onChange(value ?? "")}
+                                    placeholder="Select category"
+                                    required
+                                    error={fieldState.error?.message}
+                                />
                             )}
-                        </div>
+                        />
 
-                        <div className="space-y-2">
-                            <label
-                                htmlFor="account"
-                                className="text-xs font-medium text-text-primary"
-                            >
-                                Account
-                            </label>
-
-                            <select
-                                id="account"
-                                {...register("account")}
-                                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                            >
-                                {accounts.map((account) => (
-                                    <option key={account} value={account}>
-                                        {account}
-                                    </option>
-                                ))}
-                            </select>
-
-                            {errors.account && (
-                                <p className="text-xs text-danger">
-                                    {errors.account.message}
-                                </p>
+                        <Controller
+                            name="account"
+                            control={control}
+                            render={({ field, fieldState }) => (
+                                <Select
+                                    id="account"
+                                    label="Account"
+                                    options={accountOptions}
+                                    value={field.value}
+                                    onChange={(value) => field.onChange(value ?? "")}
+                                    placeholder="Select account"
+                                    required
+                                    error={fieldState.error?.message}
+                                />
                             )}
-                        </div>
+                        />
                     </div>
 
                     {/* Date */}

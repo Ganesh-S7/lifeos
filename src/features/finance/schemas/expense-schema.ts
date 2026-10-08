@@ -1,9 +1,29 @@
 import { z } from "zod";
 
+const amountSchema = z.preprocess(
+    (value) => {
+        if (value === "" || value === null || value === undefined) {
+            return undefined;
+        }
+
+        if (typeof value === "number" && Number.isNaN(value)) {
+            return undefined;
+        }
+
+        return value;
+    },
+    z
+        .number({
+            error: (issue) =>
+                issue.input === undefined
+                    ? "Please enter an amount."
+                    : "Please enter a valid number.",
+        })
+        .positive("Amount must be greater than 0."),
+);
+
 export const expenseSchema = z.object({
-    amount: z
-        .number()
-        .positive("Amount must be greater than 0"),
+    amount: amountSchema,
 
     merchant: z
         .string()

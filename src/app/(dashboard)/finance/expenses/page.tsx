@@ -31,7 +31,7 @@ export default function ExpensesPage() {
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
 
     const [search, setSearch] = useState("");
-    const [category, setCategory] = useState("");
+    const [category, setCategory] = useState("all");
     const [sort, setSort] = useState<ExpenseSort>("date-desc");
 
     const filteredExpenses = useMemo(() => {
@@ -53,7 +53,7 @@ export default function ExpensesPage() {
                 );
             })
             .filter((expense) => {
-                if (!category) {
+                if (!category || category === "all") {
                     return true;
                 }
 
@@ -96,7 +96,7 @@ export default function ExpensesPage() {
 
     const handleResetFilters = () => {
         setSearch("");
-        setCategory("");
+        setCategory("all");
         setSort("date-desc");
     };
 
