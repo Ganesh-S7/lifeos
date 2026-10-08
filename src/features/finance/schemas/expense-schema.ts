@@ -28,25 +28,30 @@ export const expenseSchema = z.object({
     merchant: z
         .string()
         .trim()
-        .min(1, "Merchant is required")
-        .max(100, "Merchant must be 100 characters or less"),
+        .min(1, "Please enter a merchant name.")
+        .max(100, "Merchant name is too long."),
 
     category: z
         .string()
-        .min(1, "Category is required"),
+        .min(1, "Please select a category."),
 
     account: z
         .string()
-        .min(1, "Account is required"),
+        .min(1, "Please select an account."),
 
-    date: z
-        .string()
-        .min(1, "Date is required"),
+    date: z.date({
+        error: (issue) =>
+            issue.input === undefined
+                ? "Please select a date."
+                : "Please enter a valid date.",
+    }),
 
     note: z
         .string()
         .trim()
-        .max(250, "Note must be 250 characters or less"),
+        .max(250, "Note must be 250 characters or less."),
 });
 
-export type ExpenseFormValues = z.infer<typeof expenseSchema>;
+export type ExpenseFormInput = z.input<typeof expenseSchema>;
+
+export type ExpenseFormValues = z.output<typeof expenseSchema>;

@@ -4,7 +4,7 @@ import {
     X,
 } from "lucide-react";
 
-import { Button, Input, Select, SelectOption } from "@/components/ui";
+import { Button, DatePicker, Input, Select, SelectOption } from "@/components/ui";
 
 export type ExpenseSort =
     | "date-desc"
@@ -23,10 +23,12 @@ interface ExpensesToolbarProps {
     search: string;
     category: string;
     sort: ExpenseSort;
+    date: Date | null;
     categories: string[];
     onSearchChange: (value: string) => void;
     onCategoryChange: (value: string) => void;
     onSortChange: (value: ExpenseSort) => void;
+    onDateChange: (value: Date | null) => void;
     onReset: () => void;
 }
 
@@ -35,12 +37,20 @@ export function ExpensesToolbar({
     category,
     sort,
     categories,
+    date,
     onSearchChange,
     onCategoryChange,
     onSortChange,
+    onDateChange,
     onReset,
 }: ExpensesToolbarProps) {
-    const hasActiveFilters = Boolean(search || category || sort !== "date-desc");
+
+    const hasActiveFilters = Boolean(
+        search ||
+        category ||
+        date ||
+        sort !== "date-desc",
+    );
 
     return (
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 xl:flex-row xl:items-center">
@@ -56,10 +66,13 @@ export function ExpensesToolbar({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm">
-                    <CalendarDays className="size-3.5" />
-                    October 2026
-                </Button>
+                <DatePicker
+                    value={date}
+                    onChange={onDateChange}
+                    placeholder="Date"
+                    className="w-37.5"
+                    triggerClassName="h-8 text-xs"
+                />
 
                 <Select
                     value={category || null}

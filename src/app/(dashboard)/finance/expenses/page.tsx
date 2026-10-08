@@ -14,6 +14,7 @@ import { ExpensesTable } from "@/features/finance/components/expenses/expenses-t
 import { mockExpenses } from "@/features/finance/data/mock-expenses";
 import type { Expense } from "@/features/finance/types/expense";
 import type { ExpenseFormValues } from "@/features/finance/schemas/expense-schema";
+import { formatDateValue } from "@/lib/utils/date";
 
 const categories = [
     "Food",
@@ -27,7 +28,7 @@ const categories = [
 
 export default function ExpensesPage() {
     const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
-
+    const [date, setDate] = useState<Date | null>(null);
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
 
     const [search, setSearch] = useState("");
@@ -84,7 +85,7 @@ export default function ExpensesPage() {
             category: data.category,
             account: data.account,
             amount: data.amount,
-            date: data.date,
+            date: formatDateValue(data.date),
             note: data.note || undefined,
         };
 
@@ -96,8 +97,9 @@ export default function ExpensesPage() {
 
     const handleResetFilters = () => {
         setSearch("");
-        setCategory("all");
+        setCategory("");
         setSort("date-desc");
+        setDate(null);
     };
 
     return (
@@ -112,10 +114,12 @@ export default function ExpensesPage() {
                 search={search}
                 category={category}
                 sort={sort}
+                date={date}
                 categories={categories}
                 onSearchChange={setSearch}
                 onCategoryChange={setCategory}
                 onSortChange={setSort}
+                onDateChange={setDate}
                 onReset={handleResetFilters}
             />
 

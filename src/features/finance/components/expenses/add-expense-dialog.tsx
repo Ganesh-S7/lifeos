@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
     Button,
+    DatePicker,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui";
 
 import {
+    ExpenseFormInput,
     expenseSchema,
     type ExpenseFormValues,
 } from "../../schemas/expense-schema";
@@ -42,16 +44,6 @@ const accountOptions = [
     { label: "Savings", value: "Savings" },
 ];
 
-function getTodayValue() {
-    const today = new Date();
-
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-}
-
 export function AddExpenseDialog({
     open,
     onOpenChange,
@@ -63,14 +55,18 @@ export function AddExpenseDialog({
         reset,
         control,
         formState: { errors, isSubmitting },
-    } = useForm<ExpenseFormValues>({
+    } = useForm<
+        ExpenseFormInput,
+        undefined,
+        ExpenseFormValues
+    >({
         resolver: zodResolver(expenseSchema),
         defaultValues: {
             amount: undefined,
             merchant: "",
             category: "Shopping",
             account: "Primary Account",
-            date: getTodayValue(),
+            date: new Date(),
             note: "",
         },
     });
@@ -83,7 +79,7 @@ export function AddExpenseDialog({
             merchant: "",
             category: "",
             account: "Primary Account",
-            date: getTodayValue(),
+            date: new Date(),
             note: "",
         });
 
@@ -201,26 +197,20 @@ export function AddExpenseDialog({
                     </div>
 
                     {/* Date */}
-                    <div className="space-y-2">
-                        <label
-                            htmlFor="date"
-                            className="text-xs font-medium text-text-primary"
-                        >
-                            Date
-                        </label>
-
-                        <Input
-                            id="date"
-                            type="date"
-                            {...register("date")}
-                        />
-
-                        {errors.date && (
-                            <p className="text-xs text-danger">
-                                {errors.date.message}
-                            </p>
+                    <Controller
+                        name="date"
+                        control={control}
+                        render={({ field, fieldState }) => (
+                            <DatePicker
+                                id="date"
+                                label="Date"
+                                value={field.value}
+                                onChange={field.onChange}
+                                required
+                                error={fieldState.error?.message}
+                            />
                         )}
-                    </div>
+                    />
 
                     {/* Note */}
                     <div className="space-y-2">
