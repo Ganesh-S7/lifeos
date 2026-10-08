@@ -1,4 +1,4 @@
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Search } from "lucide-react";
 
 import { Badge, Card, IconButton } from "@/components/ui";
 import type { Expense } from "../../types/expense";
@@ -35,6 +35,24 @@ function formatAmount(amount: number) {
 export function ExpensesTable({
     expenses,
 }: ExpensesTableProps) {
+    if (expenses.length === 0) {
+        return (
+            <Card className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
+                <div className="flex size-10 items-center justify-center rounded-full bg-surface-elevated">
+                    <Search className="size-4 text-text-muted" />
+                </div>
+
+                <p className="mt-4 text-sm font-medium text-text-primary">
+                    No expenses found
+                </p>
+
+                <p className="mt-1 max-w-md text-xs leading-5 text-text-secondary">
+                    Try changing your search or filters to find the
+                    expense you&apos;re looking for.
+                </p>
+            </Card>
+        );
+    }
     return (
         <Card className="overflow-hidden">
             <div className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
