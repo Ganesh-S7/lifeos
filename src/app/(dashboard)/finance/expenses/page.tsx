@@ -35,49 +35,6 @@ export default function ExpensesPage() {
     const [category, setCategory] = useState("all");
     const [sort, setSort] = useState<ExpenseSort>("date-desc");
 
-    const filteredExpenses = useMemo(() => {
-        const normalizedSearch = search.trim().toLowerCase();
-
-        return [...expenses]
-            .filter((expense) => {
-                if (!normalizedSearch) {
-                    return true;
-                }
-
-                return [
-                    expense.merchant,
-                    expense.category,
-                    expense.account,
-                    expense.note ?? "",
-                ].some((value) =>
-                    value.toLowerCase().includes(normalizedSearch)
-                );
-            })
-            .filter((expense) => {
-                if (!category || category === "all") {
-                    return true;
-                }
-
-                return expense.category === category;
-            })
-            .sort((a, b) => {
-                switch (sort) {
-                    case "date-asc":
-                        return a.date.localeCompare(b.date);
-
-                    case "amount-desc":
-                        return b.amount - a.amount;
-
-                    case "amount-asc":
-                        return a.amount - b.amount;
-
-                    case "date-desc":
-                    default:
-                        return b.date.localeCompare(a.date);
-                }
-            });
-    }, [expenses, search, category, sort]);
-
     const handleAddExpense = (data: ExpenseFormValues) => {
         const newExpense: Expense = {
             id: crypto.randomUUID(),
@@ -97,10 +54,61 @@ export default function ExpensesPage() {
 
     const handleResetFilters = () => {
         setSearch("");
-        setCategory("");
+        setCategory("all");
         setSort("date-desc");
         setDate(null);
     };
+
+    const filteredExpenses = useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+        const selectedDate = date ? formatDateValue(date) : null;
+
+        return [...expenses]
+            .filter((expense) => {
+                if (!normalizedSearch) {
+                    return true;
+                }
+
+                return [
+                    expense.merchant,
+                    expense.category,
+                    expense.account,
+                    expense.note ?? "",
+                ].some((value) =>
+                    value.toLowerCase().includes(normalizedSearch),
+                );
+            })
+            .filter((expense) => {
+                if (category === "all" || !category) {
+                    return true;
+                }
+
+                return expense.category === category;
+            })
+            .filter((expense) => {
+                if (!selectedDate) {
+                    return true;
+                }
+
+                return expense.date === selectedDate;
+            })
+            .sort((a, b) => {
+                switch (sort) {
+                    case "date-asc":
+                        return a.date.localeCompare(b.date);
+
+                    case "amount-desc":
+                        return b.amount - a.amount;
+
+                    case "amount-asc":
+                        return a.amount - b.amount;
+
+                    case "date-desc":
+                    default:
+                        return b.date.localeCompare(a.date);
+                }
+            });
+    }, [expenses, search, category, date, sort]);
 
     return (
         <div className="space-y-6">
@@ -108,7 +116,7 @@ export default function ExpensesPage() {
                 onAddExpense={() => setAddExpenseOpen(true)}
             />
 
-            <ExpensesSummary />
+            <ExpensesSummary expenses={expenses} />
 
             <ExpensesToolbar
                 search={search}

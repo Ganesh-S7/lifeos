@@ -1,44 +1,69 @@
 import {
-    ArrowDownRight,
-    ArrowUpRight,
+    CalendarDays,
     Receipt,
     Wallet,
 } from "lucide-react";
 
 import { Stat } from "@/components/ui";
+import { getExpenseSummary } from "../../utils/expense-utils";
+import type { Expense } from "../../types/expense";
 
-const stats = [
-    {
-        label: "This month",
-        value: "₹8,403",
-        description: "8.4% lower than September",
-        trend: "down" as const,
-        icon: Wallet,
-    },
-    {
-        label: "Today",
-        value: "₹480",
-        description: "2 transactions today",
-        trend: "neutral" as const,
-        icon: Receipt,
-    },
-    {
-        label: "Daily average",
-        value: "₹933",
-        description: "Based on October so far",
-        trend: "up" as const,
-        icon: ArrowUpRight,
-    },
-    {
-        label: "Transactions",
-        value: "8",
-        description: "This month",
-        trend: "neutral" as const,
-        icon: ArrowDownRight,
-    },
-];
+interface ExpensesSummaryProps {
+    expenses: Expense[];
+}
 
-export function ExpensesSummary() {
+const currencyFormatter = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+});
+
+function formatCurrency(amount: number) {
+    return currencyFormatter.format(amount);
+}
+
+export function ExpensesSummary({
+    expenses,
+}: ExpensesSummaryProps) {
+    const summary = getExpenseSummary(expenses);
+
+    const todayDescription =
+        summary.todayTransactionCount === 0
+            ? "No transactions today"
+            : `${summary.todayTransactionCount} transaction${summary.todayTransactionCount === 1 ? "" : "s"
+            } today`;
+
+    const stats = [
+        {
+            label: "This month",
+            value: formatCurrency(summary.monthTotal),
+            description: `${summary.monthLabel} to date`,
+            trend: "neutral" as const,
+            icon: Wallet,
+        },
+        {
+            label: "Today",
+            value: formatCurrency(summary.todayTotal),
+            description: todayDescription,
+            trend: "neutral" as const,
+            icon: Receipt,
+        },
+        {
+            label: "Daily average",
+            value: formatCurrency(summary.dailyAverage),
+            description: `Average across ${summary.daysElapsed} days`,
+            trend: "neutral" as const,
+            icon: CalendarDays,
+        },
+        {
+            label: "Transactions",
+            value: summary.transactionCount.toLocaleString("en-IN"),
+            description: `${summary.monthLabel} to date`,
+            trend: "neutral" as const,
+            icon: Receipt,
+        },
+    ];
+
     return (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {stats.map((stat) => (

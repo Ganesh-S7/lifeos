@@ -1,5 +1,4 @@
 import {
-    CalendarDays,
     Search,
     X,
 } from "lucide-react";
@@ -46,8 +45,8 @@ export function ExpensesToolbar({
 }: ExpensesToolbarProps) {
 
     const hasActiveFilters = Boolean(
-        search ||
-        category ||
+        search.trim() ||
+        (category !== "" && category !== "all") ||
         date ||
         sort !== "date-desc",
     );
@@ -98,6 +97,7 @@ export function ExpensesToolbar({
                         }
                     }}
                     className="w-37.5"
+                    contentClassName="!w-40"
                     triggerClassName="h-8 min-w-[150px] text-xs"
                 />
 
