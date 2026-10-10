@@ -3,10 +3,12 @@ import { Button } from "@/components/ui";
 
 interface ExpensesHeaderProps {
     onAddExpense?: () => void;
+    disabled?: boolean;
 }
 
 export function ExpensesHeader({
     onAddExpense,
+    disabled,
 }: ExpensesHeaderProps) {
     return (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -24,7 +26,7 @@ export function ExpensesHeader({
                 </p>
             </div>
 
-            <Button onClick={onAddExpense}>
+            <Button onClick={onAddExpense} disabled={disabled}>
                 <Plus className="size-4" />
                 Add expense
             </Button>

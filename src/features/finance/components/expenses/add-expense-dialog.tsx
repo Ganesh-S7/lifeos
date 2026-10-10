@@ -28,8 +28,10 @@ import { useEffect } from "react";
 interface AddExpenseDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSubmit: (data: ExpenseFormValues) => void;
+    onSubmit: (data: ExpenseFormValues) => boolean;
     expense?: Expense | null;
+    accounts: { label: string; value: string }[];
+    error?: string;
 }
 
 const categoryOptions = [
@@ -42,17 +44,11 @@ const categoryOptions = [
     { label: "Other", value: "Other" },
 ];
 
-const accountOptions = [
-    { label: "Primary Account", value: "Primary Account" },
-    { label: "Wallet", value: "Wallet" },
-    { label: "Savings", value: "Savings" },
-];
-
 const defaultValues: ExpenseFormInput = {
     amount: undefined,
     merchant: "",
     category: "Shopping",
-    account: "Primary Account",
+    account: "",
     date: new Date(),
     note: "",
 }
@@ -62,6 +58,8 @@ export function AddExpenseDialog({
     onOpenChange,
     onSubmit,
     expense,
+    accounts,
+    error,
 }: AddExpenseDialogProps) {
     const {
         register,
@@ -79,8 +77,7 @@ export function AddExpenseDialog({
     });
 
     const handleFormSubmit = (data: ExpenseFormValues) => {
-        onSubmit(data);
-        onOpenChange(false);
+        if (onSubmit(data)) onOpenChange(false);
     };
 
     const handleCancel = () => {
@@ -204,7 +201,7 @@ export function AddExpenseDialog({
                                 <Select
                                     id="account"
                                     label="Account"
-                                    options={accountOptions}
+                                    options={accounts}
                                     value={field.value}
                                     onChange={(value) => field.onChange(value ?? "")}
                                     placeholder="Select account"
@@ -257,6 +254,8 @@ export function AddExpenseDialog({
                             </p>
                         )}
                     </div>
+
+                    {error && <p role="alert" className="text-xs text-danger">{error}</p>}
 
                     <DialogFooter className="mt-2">
                         <Button

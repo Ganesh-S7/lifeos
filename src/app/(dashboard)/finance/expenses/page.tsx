@@ -11,11 +11,12 @@ import {
 } from "@/features/finance/components/expenses/expenses-toolbar";
 import { ExpensesTable } from "@/features/finance/components/expenses/expenses-table";
 
-import { mockExpenses } from "@/features/finance/data/mock-expenses";
 import type { Expense } from "@/features/finance/types/expense";
 import type { ExpenseFormValues } from "@/features/finance/schemas/expense-schema";
 import { formatDateValue } from "@/lib/utils/date";
 import { DeleteModal } from "@/components/ui";
+import Link from "next/link";
+import { financeActions, useFinance } from "@/features/finance/store/finance-store";
 
 const categories = [
     "Food",
@@ -28,7 +29,19 @@ const categories = [
 ];
 
 export default function ExpensesPage() {
-    const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
+    const { data, ready } = useFinance();
+    const [error, setError] = useState("");
+    const expenses: Expense[] = data.transactions
+        .filter((transaction) => transaction.type === "expense")
+        .map((transaction) => ({
+            id: transaction.id,
+            merchant: transaction.description,
+            category: transaction.category || "Other",
+            account: transaction.accountId || "",
+            amount: transaction.amount,
+            date: transaction.date,
+            note: transaction.note,
+        }));
     const [date, setDate] = useState<Date | null>(null);
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
 
@@ -41,56 +54,41 @@ export default function ExpensesPage() {
         useState<Expense | null>(null);
 
     const handleSaveExpense = (data: ExpenseFormValues) => {
-        if (editingExpense) {
-            setExpenses((currentExpenses) =>
-                currentExpenses.map((expense) =>
-                    expense.id === editingExpense.id
-                        ? {
-                            ...expense,
-                            merchant: data.merchant,
-                            category: data.category,
-                            account: data.account,
-                            amount: data.amount,
-                            date: formatDateValue(data.date),
-                            note: data.note || undefined,
-                        }
-                        : expense,
-                ),
-            );
-
+        try {
+            financeActions.saveTransaction({
+                id: editingExpense?.id,
+                type: "expense",
+                amount: data.amount,
+                description: data.merchant,
+                category: data.category,
+                accountId: data.account,
+                date: formatDateValue(data.date),
+                note: data.note || undefined,
+            });
+            setError("");
             setEditingExpense(null);
-            return;
+            return true;
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : "Could not save expense.");
+            return false;
         }
-
-        const newExpense: Expense = {
-            id: crypto.randomUUID(),
-            merchant: data.merchant,
-            category: data.category,
-            account: data.account,
-            amount: data.amount,
-            date: formatDateValue(data.date),
-            note: data.note || undefined,
-        };
-
-        setExpenses((currentExpenses) => [
-            newExpense,
-            ...currentExpenses,
-        ]);
     };
 
     const handleEditExpense = (expense: Expense) => {
-        setEditingExpense(expense);
+        const original = data.transactions.find((transaction) => transaction.id === expense.id);
+        setEditingExpense({ ...expense, account: original?.accountId || "" });
         setAddExpenseOpen(true);
     };
 
     const handleConfirmDelete = () => {
         if (!expenseToDelete) return;
 
-        setExpenses((currentExpenses) =>
-            currentExpenses.filter(
-                (expense) => expense.id !== expenseToDelete.id,
-            ),
-        );
+        try {
+            financeActions.deleteTransaction(expenseToDelete.id);
+            setError("");
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : "Could not delete expense.");
+        }
 
         setExpenseToDelete(null);
     };
@@ -115,7 +113,8 @@ export default function ExpensesPage() {
                 return [
                     expense.merchant,
                     expense.category,
-                    expense.account,
+                    data.accounts.find((account) => account.id === expense.account)?.name ||
+                        data.transactions.find((transaction) => transaction.id === expense.id)?.demoAccount || "",
                     expense.note ?? "",
                 ].some((value) =>
                     value.toLowerCase().includes(normalizedSearch),
@@ -151,12 +150,21 @@ export default function ExpensesPage() {
                         return b.date.localeCompare(a.date);
                 }
             });
-    }, [expenses, search, category, date, sort]);
+    }, [expenses, data.accounts, data.transactions, search, category, date, sort]);
 
     return (
         <div className="space-y-6">
+            {!ready && <p className="text-sm text-text-secondary">Loading finance data…</p>}
+            {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+            {data.accounts.length === 0 && (
+                <p className="rounded-xl border border-border bg-surface p-4 text-sm text-text-secondary">
+                    Add a bank account before recording expenses. {" "}
+                    <Link href="/finance" className="text-primary underline">Manage accounts</Link>
+                </p>
+            )}
             <ExpensesHeader
                 onAddExpense={() => setAddExpenseOpen(true)}
+                disabled={data.accounts.length === 0}
             />
 
             <ExpensesSummary expenses={expenses} />
@@ -189,7 +197,11 @@ export default function ExpensesPage() {
             </div>
 
             <ExpensesTable
-                expenses={filteredExpenses}
+                expenses={filteredExpenses.map((expense) => ({
+                    ...expense,
+                    account: data.accounts.find((account) => account.id === expense.account)?.name ||
+                        data.transactions.find((transaction) => transaction.id === expense.id)?.demoAccount || "Historical",
+                }))}
                 onEdit={handleEditExpense}
                 onDelete={setExpenseToDelete}
             />
@@ -204,6 +216,8 @@ export default function ExpensesPage() {
                     }
                 }}
                 expense={editingExpense}
+                accounts={data.accounts.map((account) => ({ label: account.name, value: account.id }))}
+                error={error}
                 onSubmit={handleSaveExpense}
             />
             <DeleteModal
