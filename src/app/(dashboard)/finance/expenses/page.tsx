@@ -15,6 +15,7 @@ import { mockExpenses } from "@/features/finance/data/mock-expenses";
 import type { Expense } from "@/features/finance/types/expense";
 import type { ExpenseFormValues } from "@/features/finance/schemas/expense-schema";
 import { formatDateValue } from "@/lib/utils/date";
+import { DeleteModal } from "@/components/ui";
 
 const categories = [
     "Food",
@@ -34,8 +35,33 @@ export default function ExpensesPage() {
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("all");
     const [sort, setSort] = useState<ExpenseSort>("date-desc");
+    const [editingExpense, setEditingExpense] =
+        useState<Expense | null>(null);
+    const [expenseToDelete, setExpenseToDelete] =
+        useState<Expense | null>(null);
 
-    const handleAddExpense = (data: ExpenseFormValues) => {
+    const handleSaveExpense = (data: ExpenseFormValues) => {
+        if (editingExpense) {
+            setExpenses((currentExpenses) =>
+                currentExpenses.map((expense) =>
+                    expense.id === editingExpense.id
+                        ? {
+                            ...expense,
+                            merchant: data.merchant,
+                            category: data.category,
+                            account: data.account,
+                            amount: data.amount,
+                            date: formatDateValue(data.date),
+                            note: data.note || undefined,
+                        }
+                        : expense,
+                ),
+            );
+
+            setEditingExpense(null);
+            return;
+        }
+
         const newExpense: Expense = {
             id: crypto.randomUUID(),
             merchant: data.merchant,
@@ -50,6 +76,23 @@ export default function ExpensesPage() {
             newExpense,
             ...currentExpenses,
         ]);
+    };
+
+    const handleEditExpense = (expense: Expense) => {
+        setEditingExpense(expense);
+        setAddExpenseOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (!expenseToDelete) return;
+
+        setExpenses((currentExpenses) =>
+            currentExpenses.filter(
+                (expense) => expense.id !== expenseToDelete.id,
+            ),
+        );
+
+        setExpenseToDelete(null);
     };
 
     const handleResetFilters = () => {
@@ -145,12 +188,47 @@ export default function ExpensesPage() {
                 </p>
             </div>
 
-            <ExpensesTable expenses={filteredExpenses} />
+            <ExpensesTable
+                expenses={filteredExpenses}
+                onEdit={handleEditExpense}
+                onDelete={setExpenseToDelete}
+            />
 
             <AddExpenseDialog
                 open={addExpenseOpen}
-                onOpenChange={setAddExpenseOpen}
-                onSubmit={handleAddExpense}
+                onOpenChange={(open) => {
+                    setAddExpenseOpen(open);
+
+                    if (!open) {
+                        setEditingExpense(null);
+                    }
+                }}
+                expense={editingExpense}
+                onSubmit={handleSaveExpense}
+            />
+            <DeleteModal
+                open={expenseToDelete !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setExpenseToDelete(null);
+                    }
+                }}
+                title="Delete expense?"
+                description={
+                    expenseToDelete ? (
+                        <>
+                            Are you sure you want to delete{" "}
+                            <span className="font-medium text-text-primary">
+                                {expenseToDelete.merchant}
+                            </span>
+                            ? This action cannot be undone.
+                        </>
+                    ) : (
+                        "This expense will be permanently removed."
+                    )
+                }
+                confirmText="Delete expense"
+                onConfirm={handleConfirmDelete}
             />
         </div>
     );

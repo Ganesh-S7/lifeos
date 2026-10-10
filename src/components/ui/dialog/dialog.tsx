@@ -49,7 +49,7 @@ export const DialogContent = forwardRef<
                     "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
                     "max-w-lg -translate-x-1/2 -translate-y-1/2",
                     "rounded-xl border border-border bg-surface",
-                    "p-6 text-text-primary shadow-lg",
+                    "p-5 text-text-primary shadow-lg",
                     "outline-none",
                     "transition-[opacity,transform] duration-200",
                     "data-[state=closed]:opacity-0 data-[state=open]:opacity-100",

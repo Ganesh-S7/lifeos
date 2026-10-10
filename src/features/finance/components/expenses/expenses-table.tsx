@@ -1,10 +1,14 @@
-import { MoreHorizontal, Search } from "lucide-react";
+import { MoreHorizontal, Pencil, Search, Trash2 } from "lucide-react";
 
-import { Badge, Card, IconButton } from "@/components/ui";
+import { Badge, Card, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, IconButton } from "@/components/ui";
 import type { Expense } from "../../types/expense";
+import { formatDateDisplay } from "@/lib/utils/date";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface ExpensesTableProps {
     expenses: Expense[];
+    onEdit: (expense: Expense) => void;
+    onDelete: (expense: Expense) => void;
 }
 
 const categoryVariants = {
@@ -16,24 +20,52 @@ const categoryVariants = {
     Entertainment: "brand",
 } as const;
 
-function formatDate(date: string) {
-    return new Intl.DateTimeFormat("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-    }).format(new Date(date));
+interface ExpenseActionsProps {
+    expense: Expense;
+    onEdit: (expense: Expense) => void;
+    onDelete: (expense: Expense) => void;
 }
 
-function formatAmount(amount: number) {
-    return new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-        maximumFractionDigits: 0,
-    }).format(amount);
+function ExpenseActions({
+    expense,
+    onEdit,
+    onDelete,
+}: ExpenseActionsProps) {
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <IconButton
+                    size="sm"
+                    aria-label={`Actions for ${expense.merchant}`}
+                >
+                    <MoreHorizontal className="size-4" />
+                </IconButton>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => onEdit(expense)}>
+                    <Pencil className="size-3.5" />
+                    Edit expense
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                    onSelect={() => onDelete(expense)}
+                    className="text-danger data-highlighted:text-danger"
+                >
+                    <Trash2 className="size-3.5" />
+                    Delete expense
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 }
 
 export function ExpensesTable({
     expenses,
+    onDelete,
+    onEdit,
 }: ExpensesTableProps) {
     if (expenses.length === 0) {
         return (
@@ -131,23 +163,21 @@ export function ExpensesTable({
                                     </td>
 
                                     <td className="px-5 py-3.5 text-xs text-text-secondary">
-                                        {formatDate(expense.date)}
+                                        {formatDateDisplay(expense.date)}
                                     </td>
 
                                     <td className="px-5 py-3.5 text-right">
                                         <span className="text-xs font-semibold text-text-primary">
-                                            -{formatAmount(expense.amount)}
+                                            -{formatCurrency(expense.amount)}
                                         </span>
                                     </td>
 
                                     <td className="px-3 py-3.5">
-                                        <IconButton
-                                            size="sm"
-                                            aria-label={`Actions for ${expense.merchant}`}
-                                            className="opacity-0 transition-opacity group-hover:opacity-100"
-                                        >
-                                            <MoreHorizontal className="size-4" />
-                                        </IconButton>
+                                        <ExpenseActions
+                                            expense={expense}
+                                            onEdit={onEdit}
+                                            onDelete={onDelete}
+                                        />
                                     </td>
                                 </tr>
                             );
@@ -184,14 +214,19 @@ export function ExpensesTable({
                                     </Badge>
 
                                     <span className="text-[10px] text-text-muted">
-                                        {formatDate(expense.date)}
+                                        {formatDateDisplay(expense.date)}
                                     </span>
                                 </div>
                             </div>
 
                             <p className="text-xs font-semibold text-text-primary">
-                                -{formatAmount(expense.amount)}
+                                -{formatCurrency(expense.amount)}
                             </p>
+                            <ExpenseActions
+                                expense={expense}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                            />
                         </div>
                     );
                 })}

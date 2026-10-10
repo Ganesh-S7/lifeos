@@ -7,19 +7,10 @@ import {
 import { Stat } from "@/components/ui";
 import { getExpenseSummary } from "../../utils/expense-utils";
 import type { Expense } from "../../types/expense";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface ExpensesSummaryProps {
     expenses: Expense[];
-}
-
-const currencyFormatter = new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-});
-
-function formatCurrency(amount: number) {
-    return currencyFormatter.format(amount);
 }
 
 export function ExpensesSummary({

@@ -21,11 +21,15 @@ import {
     expenseSchema,
     type ExpenseFormValues,
 } from "../../schemas/expense-schema";
+import { Expense } from "../../types/expense";
+import { parseDateValue } from "@/lib/utils/date";
+import { useEffect } from "react";
 
 interface AddExpenseDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSubmit: (data: ExpenseFormValues) => void;
+    expense?: Expense | null;
 }
 
 const categoryOptions = [
@@ -44,10 +48,20 @@ const accountOptions = [
     { label: "Savings", value: "Savings" },
 ];
 
+const defaultValues: ExpenseFormInput = {
+    amount: undefined,
+    merchant: "",
+    category: "Shopping",
+    account: "Primary Account",
+    date: new Date(),
+    note: "",
+}
+
 export function AddExpenseDialog({
     open,
     onOpenChange,
     onSubmit,
+    expense,
 }: AddExpenseDialogProps) {
     const {
         register,
@@ -61,28 +75,11 @@ export function AddExpenseDialog({
         ExpenseFormValues
     >({
         resolver: zodResolver(expenseSchema),
-        defaultValues: {
-            amount: undefined,
-            merchant: "",
-            category: "Shopping",
-            account: "Primary Account",
-            date: new Date(),
-            note: "",
-        },
+        defaultValues,
     });
 
     const handleFormSubmit = (data: ExpenseFormValues) => {
         onSubmit(data);
-
-        reset({
-            amount: undefined,
-            merchant: "",
-            category: "",
-            account: "Primary Account",
-            date: new Date(),
-            note: "",
-        });
-
         onOpenChange(false);
     };
 
@@ -91,14 +88,35 @@ export function AddExpenseDialog({
         onOpenChange(false);
     };
 
+    useEffect(() => {
+        if (!open) return;
+
+        if (expense) {
+            reset({
+                amount: expense.amount,
+                merchant: expense.merchant,
+                category: expense.category,
+                account: expense.account,
+                date: parseDateValue(expense.date),
+                note: expense.note ?? "",
+            });
+        } else {
+            reset(defaultValues);
+        }
+    }, [open, expense, reset]);
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-130">
                 <DialogHeader>
-                    <DialogTitle>Add expense</DialogTitle>
+                    <DialogTitle>
+                        {expense ? "Edit expense" : "Add expense"}
+                    </DialogTitle>
 
                     <DialogDescription>
-                        Record an expense and keep your financial picture up to date.
+                        {expense
+                            ? "Update the details of this expense."
+                            : "Record an expense and keep your financial picture up to date."}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -123,6 +141,7 @@ export function AddExpenseDialog({
                             <Input
                                 id="amount"
                                 placeholder="0.00"
+                                maxLength={10}
                                 className="pl-8"
                                 {...register("amount", {
                                     valueAsNumber: true,
@@ -249,7 +268,11 @@ export function AddExpenseDialog({
                         </Button>
 
                         <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? "Saving..." : "Add expense"}
+                            {isSubmitting
+                                ? "Saving..."
+                                : expense
+                                    ? "Save changes"
+                                    : "Add expense"}
                         </Button>
                     </DialogFooter>
                 </form>
