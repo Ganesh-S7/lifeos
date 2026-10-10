@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarDays } from "lucide-react";
 import {
     DayPicker,
+    getDefaultClassNames,
     type Matcher,
 } from "@daypicker/react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
@@ -39,6 +40,7 @@ function formatDate(date: Date) {
     }).format(date);
 }
 
+const defaultClassNames = getDefaultClassNames();
 export function DatePicker({
     id,
     label,
@@ -157,11 +159,17 @@ export function DatePicker({
                                     "relative flex items-center justify-center px-8",
                                 caption_label:
                                     "text-sm font-semibold text-text-primary",
+
                                 nav: "absolute inset-x-0 top-0 flex items-center justify-between",
+
                                 button_previous:
                                     "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary",
+
                                 button_next:
                                     "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary",
+
+                                chevron: defaultClassNames.chevron,
+
                                 month_grid: "w-full border-collapse",
                                 weekdays: "flex",
                                 weekday:
@@ -172,13 +180,16 @@ export function DatePicker({
                                     "inline-flex size-8 items-center justify-center rounded-md text-xs font-medium transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
                                 selected:
                                     "bg-primary text-primary-foreground hover:bg-primary-hover",
-                                today:
-                                    "font-semibold text-primary",
-                                outside:
-                                    "text-text-muted opacity-50",
+                                today: "font-semibold text-primary",
+                                outside: "text-text-muted opacity-50",
                                 disabled:
                                     "pointer-events-none text-text-muted opacity-30",
                                 hidden: "invisible",
+                            }}
+                            styles={{
+                                chevron: {
+                                    fill: "var(--text-secondary)",
+                                },
                             }}
                         />
                     </PopoverPrimitive.Content>
