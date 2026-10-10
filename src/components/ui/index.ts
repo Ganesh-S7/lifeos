@@ -8,3 +8,4 @@ export * from "./stat";
 export * from "./dialog";
 export * from "./select";
 export * from "./date-picker";
+export * from "./dropdown-menu";
