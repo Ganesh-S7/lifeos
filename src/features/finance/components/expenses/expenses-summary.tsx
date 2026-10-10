@@ -5,18 +5,72 @@ import {
 } from "lucide-react";
 
 import { Stat } from "@/components/ui";
+import { formatCurrency } from "@/lib/utils/currency";
 import { getExpenseSummary } from "../../utils/expense-utils";
 import type { Expense } from "../../types/expense";
-import { formatCurrency } from "@/lib/utils/currency";
 
 interface ExpensesSummaryProps {
     expenses: Expense[];
+}
+
+function getSpendingComparison(
+    percent: number | null,
+    previousPeriodLabel: string,
+) {
+    if (percent === null) {
+        return {
+            description: "No comparison data",
+            trend: "neutral" as const,
+            trendTone: "neutral" as const,
+        };
+    }
+
+    if (Math.abs(percent) < 0.05) {
+        return {
+            description: `About the same as ${previousPeriodLabel}`,
+            trend: "neutral" as const,
+            trendTone: "neutral" as const,
+        };
+    }
+
+    const direction = percent < 0 ? "down" : "up";
+    const comparison = percent < 0 ? "lower" : "higher";
+
+    return {
+        description: `${Math.abs(percent).toFixed(1)}% ${comparison} than ${previousPeriodLabel}`,
+        trend: direction as "up" | "down",
+        trendTone: percent < 0 ? "positive" as const : "negative" as const,
+    };
+}
+
+function getTransactionComparison(
+    currentCount: number,
+    previousCount: number,
+    previousPeriodLabel: string,
+) {
+    if (previousCount === 0) {
+        return "No comparison data";
+    }
+
+    const difference = currentCount - previousCount;
+
+    if (difference === 0) {
+        return `Same as ${previousPeriodLabel}`;
+    }
+
+    return `${Math.abs(difference)} ${difference < 0 ? "fewer" : "more"
+        } than ${previousPeriodLabel}`;
 }
 
 export function ExpensesSummary({
     expenses,
 }: ExpensesSummaryProps) {
     const summary = getExpenseSummary(expenses);
+
+    const spendingComparison = getSpendingComparison(
+        summary.spendingChangePercent,
+        summary.previousPeriodLabel,
+    );
 
     const todayDescription =
         summary.todayTransactionCount === 0
@@ -28,8 +82,9 @@ export function ExpensesSummary({
         {
             label: "This month",
             value: formatCurrency(summary.monthTotal),
-            description: `${summary.monthLabel} to date`,
-            trend: "neutral" as const,
+            description: spendingComparison.description,
+            trend: spendingComparison.trend,
+            trendTone: spendingComparison.trendTone,
             icon: Wallet,
         },
         {
@@ -49,7 +104,11 @@ export function ExpensesSummary({
         {
             label: "Transactions",
             value: summary.transactionCount.toLocaleString("en-IN"),
-            description: `${summary.monthLabel} to date`,
+            description: getTransactionComparison(
+                summary.transactionCount,
+                summary.previousPeriodTransactionCount,
+                summary.previousPeriodLabel,
+            ),
             trend: "neutral" as const,
             icon: Receipt,
         },
@@ -64,6 +123,7 @@ export function ExpensesSummary({
                     value={stat.value}
                     description={stat.description}
                     trend={stat.trend}
+                    trendTone={stat.trendTone}
                     icon={stat.icon}
                 />
             ))}

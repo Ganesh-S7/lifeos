@@ -3,12 +3,14 @@ import { cn } from "@/lib/utils/cn";
 import { Card } from "./card";
 
 type Trend = "up" | "down" | "neutral";
+type TrendTone = "positive" | "negative" | "neutral";
 
 interface StatProps {
   label: string;
   value: string;
   description?: string;
   trend?: Trend;
+  trendTone?: TrendTone;
   icon?: LucideIcon;
 }
 
@@ -17,8 +19,22 @@ export function Stat({
   value,
   description,
   trend = "neutral",
+  trendTone,
   icon: Icon,
 }: StatProps) {
+  const resolvedTrendTone: TrendTone =
+    trendTone ??
+    (trend === "up"
+      ? "positive"
+      : trend === "down"
+        ? "negative"
+        : "neutral");
+
+  const trendToneClasses: Record<TrendTone, string> = {
+    positive: "text-success",
+    negative: "text-danger",
+    neutral: "text-text-muted",
+  };
   const TrendIcon =
     trend === "up"
       ? ArrowUpRight
@@ -52,8 +68,7 @@ export function Stat({
             <TrendIcon
               className={cn(
                 "size-3.5",
-                trend === "up" && "text-success",
-                trend === "down" && "text-danger"
+                trendToneClasses[resolvedTrendTone],
               )}
             />
           )}
