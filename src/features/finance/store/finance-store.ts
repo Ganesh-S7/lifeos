@@ -5,7 +5,11 @@ import { mockExpenses } from "../data/mock-expenses";
 import type {
     BankAccount, FinanceData, FinanceTransaction, Investment, Liability,
 } from "../types/finance";
-import { accountBalance, investmentValue } from "../utils/finance-calculations";
+import {
+    accountBalance,
+    financialSnapshot,
+    investmentValue,
+} from "../utils/finance-calculations";
 
 const storageKey = "lifeos-finance-v1";
 const demoTransactions: FinanceTransaction[] = mockExpenses.map((expense) => ({
@@ -24,6 +28,7 @@ const initialData: FinanceData = {
     investments: [],
     liabilities: [],
     transactions: demoTransactions,
+    positionHistory: [],
 };
 
 let data: FinanceData = initialData;
@@ -46,6 +51,19 @@ function hydrate() {
                 data = parsed;
             }
         }
+        if (!Array.isArray(data.positionHistory) || data.positionHistory.length === 0) {
+            const { bank, investments, debt } = financialSnapshot(data);
+            data = {
+                ...data,
+                positionHistory: [{
+                    recordedAt: new Date().toISOString(),
+                    bank,
+                    investments,
+                    debt,
+                }],
+            };
+            window.localStorage.setItem(storageKey, JSON.stringify(data));
+        }
     } catch {
         // Keep the seeded data if browser storage is unavailable or malformed.
     }
@@ -54,7 +72,14 @@ function hydrate() {
 }
 
 function commit(next: FinanceData) {
-    data = next;
+    const { bank, investments, debt } = financialSnapshot(next);
+    data = {
+        ...next,
+        positionHistory: [
+            ...(data.positionHistory ?? []),
+            { recordedAt: new Date().toISOString(), bank, investments, debt },
+        ],
+    };
     try {
         window.localStorage.setItem(storageKey, JSON.stringify(data));
     } catch {
@@ -101,6 +126,7 @@ function validateBalances(next: FinanceData) {
 
 export const financeActions = {
     saveAccount(input: { id?: string; name: string; balance: number }) {
+        hydrate();
         requireAmount(input.balance, true);
         if (!input.name.trim()) throw new Error("Enter an account name.");
         const now = new Date().toISOString();
@@ -118,6 +144,7 @@ export const financeActions = {
             : [...data.accounts, account] });
     },
     deleteAccount(id: string) {
+        hydrate();
         if (data.transactions.some((transaction) => transaction.accountId === id ||
             transaction.destinationAccountId === id)) {
             throw new Error("This account has transactions. Delete or move those transactions first.");
@@ -125,6 +152,7 @@ export const financeActions = {
         commit({ ...data, accounts: data.accounts.filter((account) => account.id !== id) });
     },
     saveInvestment(input: { id?: string; name: string; type: string; value: number }) {
+        hydrate();
         requireAmount(input.value, true);
         if (!input.name.trim() || !input.type.trim()) throw new Error("Enter a name and investment type.");
         const now = new Date().toISOString();
@@ -143,12 +171,14 @@ export const financeActions = {
             : [...data.investments, investment] });
     },
     deleteInvestment(id: string) {
+        hydrate();
         if (data.transactions.some((transaction) => transaction.investmentId === id)) {
             throw new Error("This investment has transactions. Delete those transactions first.");
         }
         commit({ ...data, investments: data.investments.filter((item) => item.id !== id) });
     },
     saveLiability(input: { id?: string; name: string; type: string; balance: number; monthlyPayment?: number }) {
+        hydrate();
         requireAmount(input.balance, true);
         if (input.monthlyPayment !== undefined) requireAmount(input.monthlyPayment, true);
         if (!input.name.trim() || !input.type.trim()) throw new Error("Enter a name and liability type.");
@@ -167,9 +197,11 @@ export const financeActions = {
             : [...data.liabilities, liability] });
     },
     deleteLiability(id: string) {
+        hydrate();
         commit({ ...data, liabilities: data.liabilities.filter((item) => item.id !== id) });
     },
     saveTransaction(input: Omit<FinanceTransaction, "id" | "recordedAt"> & { id?: string }) {
+        hydrate();
         requireAmount(input.amount);
         if (!input.description.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
             throw new Error("Enter a description and valid date.");
@@ -201,6 +233,7 @@ export const financeActions = {
         commit(next);
     },
     deleteTransaction(id: string) {
+        hydrate();
         const next = { ...data, transactions: data.transactions.filter((item) => item.id !== id) };
         validateBalances(next);
         commit(next);

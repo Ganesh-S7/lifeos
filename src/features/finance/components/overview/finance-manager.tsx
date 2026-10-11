@@ -18,7 +18,7 @@ interface Props {
 const transactionTypes = [
     { label: "Income", value: "income" },
     { label: "Transfer", value: "transfer" },
-    { label: "Investment purchase", value: "inzvestment_purchase" },
+    { label: "Investment purchase", value: "investment_purchase" },
     { label: "Investment sale", value: "investment_sale" },
 ];
 

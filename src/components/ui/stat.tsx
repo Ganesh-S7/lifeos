@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { LucideIcon, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Card } from "./card";
@@ -12,6 +13,9 @@ interface StatProps {
   trend?: Trend;
   trendTone?: TrendTone;
   icon?: LucideIcon;
+  footer?: ReactNode;
+  action?: ReactNode;
+  className?: string;
 }
 
 export function Stat({
@@ -21,6 +25,9 @@ export function Stat({
   trend = "neutral",
   trendTone,
   icon: Icon,
+  footer,
+  action,
+  className,
 }: StatProps) {
   const resolvedTrendTone: TrendTone =
     trendTone ??
@@ -43,7 +50,7 @@ export function Stat({
         : null;
 
   return (
-    <Card className="p-5">
+    <Card className={cn("flex flex-col p-5", className)}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-medium text-text-secondary">
@@ -78,6 +85,14 @@ export function Stat({
               {description}
             </span>
           )}
+        </div>
+      )}
+
+      {footer && <div className="mt-2">{footer}</div>}
+
+      {action && (
+        <div className="mt-auto border-t border-border-subtle pt-2">
+          {action}
         </div>
       )}
     </Card>

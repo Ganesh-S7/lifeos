@@ -55,4 +55,13 @@ export interface FinanceData {
     investments: Investment[];
     liabilities: Liability[];
     transactions: FinanceTransaction[];
+    /** Actual positions captured when the local finance data changed. */
+    positionHistory?: FinancialPositionSnapshot[];
+}
+
+export interface FinancialPositionSnapshot {
+    recordedAt: string;
+    bank: number;
+    investments: number;
+    debt: number;
 }
