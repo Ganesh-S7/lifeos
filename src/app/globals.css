@@ -79,6 +79,9 @@
 
   --shadow-lg:
     0 12px 30px rgba(0, 0, 0, 0.08);
+
+  --chart-income: var(--brand);
+  --chart-expenses: #b7791f;
 }
 
 /* --------------------------------
@@ -131,6 +134,9 @@
 
   --shadow-lg:
     0 16px 40px rgba(0, 0, 0, 0.35);
+
+  --chart-income: var(--brand);
+  --chart-expenses: #e6ac47;
 }
 
 /* --------------------------------

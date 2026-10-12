@@ -15,7 +15,9 @@ import { FinanceManager, type ManagerKind } from "./finance-manager";
 import { ManageFinancesDialog, type FinanceSection } from "./manage-finances-dialog";
 import { NetWorthBreakdownDialog } from "./net-worth-breakdown-dialog";
 import {
+    ArrowLeft,
     ArrowLeftRight,
+    ArrowRight,
     Banknote,
     CreditCard,
     Percent,
@@ -171,30 +173,30 @@ export function FinanceOverview() {
                     <p className="mt-1 text-sm text-text-secondary">Your financial position and this month&apos;s activity.</p>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:justify-end">
-                    <Button variant="secondary" onClick={() => openManage()}>
-                        Manage finances
-                    </Button>
-                    <Button
-                        variant="outline"
-                        disabled={data.accounts.length === 0}
-                        onClick={() => open("transaction")}
-                    >
-                        Record income or transfer
-                    </Button>
                     <Link
                         href="/finance/expenses"
-                        className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm text-text-primary"
+                        className="rounded-lg group flex gap-1 items-center border border-border bg-surface px-3.5 py-2 text-sm text-text-primary"
                     >
                         Manage expenses
+                        <ArrowRight size={12} className="group-hover:translate-x-1 duration-200 ease-in-out" />
                     </Link>
                 </div>
             </header>
             {!ready && <p className="text-sm text-text-secondary">Loading finance data…</p>}
             {error && <p role="alert" className="rounded-lg bg-danger-subtle p-3 text-sm text-danger">{error}</p>}
             <section className="space-y-3" aria-labelledby="snapshot-title">
-                <div>
-                    <h2 id="snapshot-title" className="text-base font-semibold text-text-primary">Overall financial snapshot</h2>
-                    <p className="text-xs text-text-secondary">Current balances, valuations and debt</p>
+                <div className="flex justify-between items-center gap-4">
+                    <div>
+                        <h2 id="snapshot-title" className="text-base font-semibold text-text-primary">Overall financial snapshot</h2>
+                        <p className="text-xs text-text-secondary">Current balances, valuations and debt</p>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => openManage()}
+                    >
+                        Manage finances
+                    </Button>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {groups.map((group) => (
@@ -215,10 +217,10 @@ export function FinanceOverview() {
                             action={
                                 <button
                                     type="button"
-                                    className="text-left text-xs font-medium text-primary hover:underline"
+                                    className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
                                     onClick={() => openManage(group.kind)}
                                 >
-                                    {group.action} →
+                                    {group.action} <ArrowRight size={10} className="group-hover:translate-x-0.5 duration-200 ease-in-out" />
                                 </button>
                             }
                         />
@@ -238,24 +240,29 @@ export function FinanceOverview() {
                         action={
                             <button
                                 type="button"
-                                className="text-left text-xs font-medium text-primary hover:underline"
+                                className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
                                 onClick={() => setBreakdownOpen(true)}
                             >
-                                View breakdown →
+                                View breakdown <ArrowRight size={10} className="group-hover:translate-x-1 duration-200 ease-in-out" />
                             </button>
                         }
                     />
                 </div>
             </section>
             <section className="space-y-3" aria-labelledby="monthly-title">
-                <div>
-                    <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
-                    <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
-                    {data.transactions.some((item) => item.demoAccount && item.date.startsWith(month)) && (
-                        <p className="mt-1 text-xs text-text-muted">
-                            Includes seeded demo expenses. These are visible in Expenses but do not affect bank balances.
-                        </p>
-                    )}
+                <div className="flex justify-between item gap-4">
+                    <div>
+                        <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
+                        <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={data.accounts.length === 0}
+                        onClick={() => open("transaction")}
+                    >
+                        Record income or transfer
+                    </Button>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {monthCards.map((item) => (

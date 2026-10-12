@@ -6,7 +6,6 @@ import { formatCurrency } from "@/lib/utils/currency";
 interface Point { month: string; income: number; expenses: number; netWorth: number }
 
 export function FinanceCharts({ data, hasSnapshot }: { data: Point[]; hasSnapshot: boolean }) {
-    const style = { backgroundColor: "var(--surface-elevated)", border: "1px solid var(--border)", borderRadius: 12 };
     const axis = { fill: "var(--text-muted)", fontSize: 11 };
     return (
         <div className="grid gap-4 xl:grid-cols-2">
@@ -25,7 +24,21 @@ export function FinanceCharts({ data, hasSnapshot }: { data: Point[]; hasSnapsho
                             <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 4" />
                             <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
                             <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Math.round(value / 1000)}k`} />
-                            <Tooltip formatter={(value) => formatCurrency(Number(value || 0))} contentStyle={style} />
+                            <Tooltip
+                                formatter={(value) => formatCurrency(Number(value || 0))}
+                                contentStyle={{
+                                    backgroundColor: "var(--surface-elevated)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "12px",
+                                    color: "var(--text-primary)",
+                                    fontSize: 12,
+                                    boxShadow: "none",
+                                }}
+                                labelStyle={{
+                                    color: "var(--text-secondary)",
+                                    marginBottom: 4,
+                                }}
+                            />
                             <Area dataKey="netWorth" name="Net worth" stroke="var(--brand)" strokeWidth={2.5} fill="url(#worth)" />
                         </AreaChart>
                     </ResponsiveContainer>
@@ -45,10 +58,34 @@ export function FinanceCharts({ data, hasSnapshot }: { data: Point[]; hasSnapsho
                             <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 4" />
                             <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
                             <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Math.round(value / 1000)}k`} />
-                            <Tooltip formatter={(value) => formatCurrency(Number(value || 0))} contentStyle={style} />
+                            <Tooltip
+                                formatter={(value) => formatCurrency(Number(value || 0))}
+                                contentStyle={{
+                                    backgroundColor: "var(--surface-elevated)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "12px",
+                                    color: "var(--text-primary)",
+                                    fontSize: 12,
+                                    boxShadow: "none",
+                                }}
+                                labelStyle={{
+                                    color: "var(--text-secondary)",
+                                    marginBottom: 4,
+                                }}
+                            />
                             <Legend />
-                            <Bar dataKey="income" name="Income" fill="var(--brand)" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="expenses" name="Expenses" fill="var(--warning)" radius={[4, 4, 0, 0]} />
+                            <Bar
+                                dataKey="income"
+                                name="Income"
+                                fill="var(--chart-income)"
+                                radius={[4, 4, 0, 0]}
+                            />
+                            <Bar
+                                dataKey="expenses"
+                                name="Expenses"
+                                fill="var(--chart-expenses)"
+                                radius={[4, 4, 0, 0]}
+                            />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
