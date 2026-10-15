@@ -15,13 +15,11 @@ import {
     parseDateValue,
 } from "@/lib/utils/date";
 
-import type {
-    HealthProgressMetric,
-} from "../utils/health-calculations";
 
 import {
     formatProgressValue,
 } from "../utils/health-formatters";
+import { HealthProgressMetric } from "../types/health";
 
 interface HealthProgressProps {
     metrics: HealthProgressMetric[];
