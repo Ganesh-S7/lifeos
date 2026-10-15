@@ -1,17 +1,8 @@
-import type { HealthLog, HealthTargets } from "../types/health";
+import type { HealthAnalyticsPoint, HealthLog, HealthProgressMetric, HealthTargets } from "../types/health";
 
 type WeightTrendPoint = {
     date: string;
     weightKg: number;
-};
-
-export type HealthProgressMetric = {
-    key: string;
-    label: string;
-    value: number | undefined;
-    target: number;
-    unit: string;
-    percentage: number | null;
 };
 
 /**
@@ -214,4 +205,67 @@ export function getTodayHealthProgress(
             },
         ];
     });
+}
+
+/**
+ * Creates a daily series for the requested calendar-day window.
+ *
+ * Missing measurements remain undefined. They are not converted to zero,
+ * so charts can show gaps instead of inventing data.
+ */
+export function getHealthAnalyticsTrend(
+    logs: HealthLog[],
+    today = new Date(),
+    days = 30,
+): HealthAnalyticsPoint[] {
+    if (!Number.isInteger(days) || days < 1) {
+        return [];
+    }
+
+    const endDate = new Date(today);
+    endDate.setHours(0, 0, 0, 0);
+
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - (days - 1));
+
+    const logsByDate = new Map(
+        logs.map((log) => [log.date, log]),
+    );
+
+    const points: HealthAnalyticsPoint[] = [];
+
+    for (let offset = 0; offset < days; offset += 1) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + offset);
+
+        const dateKey = getTodayDateKey(date);
+        const log = logsByDate.get(dateKey);
+
+        points.push({
+            date: dateKey,
+
+            weightKg: log?.weightKg,
+
+            steps: log?.steps,
+            sleepHours:
+                log?.sleepMinutes !== undefined
+                    ? log.sleepMinutes / 60
+                    : undefined,
+
+            waterLitres:
+                log?.waterMl !== undefined
+                    ? log.waterMl / 1000
+                    : undefined,
+
+            caloriesKcal: log?.caloriesKcal,
+
+            proteinGrams: log?.proteinGrams,
+
+            carbsGrams: log?.carbsGrams,
+
+            fiberGrams: log?.fiberGrams,
+        });
+    }
+
+    return points;
 }

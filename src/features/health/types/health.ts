@@ -40,3 +40,24 @@ export interface HealthTargets {
 
     updatedAt: string;
 }
+
+export type HealthProgressMetric = {
+    key: string;
+    label: string;
+    value: number | undefined;
+    target: number;
+    unit: string;
+    percentage: number | null;
+};
+
+export interface HealthAnalyticsPoint {
+    date: string;
+    weightKg?: number;
+    steps?: number;
+    sleepHours?: number;
+    waterLitres?: number;
+    caloriesKcal?: number;
+    proteinGrams?: number;
+    carbsGrams?: number;
+    fiberGrams?: number;
+}

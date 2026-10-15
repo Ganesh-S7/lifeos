@@ -2,10 +2,18 @@
 
 import {
     Activity,
+    ChevronLeft,
+    ChevronRight,
     Settings2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui";
+
+import {
+    formatDateDisplay,
+    formatDateValue,
+    parseDateValue,
+} from "@/lib/utils/date";
 
 import type {
     HealthProgressMetric,
@@ -17,7 +25,9 @@ import {
 
 interface HealthProgressProps {
     metrics: HealthProgressMetric[];
-    dateLabel: string;
+    selectedDate: string;
+    todayDate: string;
+    onSelectedDateChange: (date: string) => void;
     onManageTargets: () => void;
 }
 
@@ -64,7 +74,7 @@ function ProgressItem({ metric }: ProgressItemProps) {
                 aria-valuetext={
                     hasValue
                         ? `${percentage}% of target`
-                        : "Not recorded today"
+                        : "Not recorded for this day"
                 }
                 className="h-2 overflow-hidden rounded-full bg-surface-elevated"
             >
@@ -80,33 +90,108 @@ function ProgressItem({ metric }: ProgressItemProps) {
             <p className="text-xs text-text-muted">
                 {hasValue
                     ? `${percentage}% completed`
-                    : "Log today's measurement to track progress"}
+                    : "No measurement recorded for this day"}
             </p>
         </div>
     );
 }
 
+function shiftDate(dateKey: string, days: number): string {
+    const date = parseDateValue(dateKey);
+
+    date.setDate(date.getDate() + days);
+
+    return formatDateValue(date);
+}
+
 export function HealthProgress({
     metrics,
-    dateLabel,
+    selectedDate,
+    todayDate,
+    onSelectedDateChange,
     onManageTargets,
 }: HealthProgressProps) {
+    const isToday = selectedDate === todayDate;
+    const isFutureDate = selectedDate > todayDate;
+
+    const displayDate = isToday
+        ? "Today"
+        : formatDateDisplay(selectedDate);
+
+    function navigateDay(direction: -1 | 1) {
+        const nextDate = shiftDate(selectedDate, direction);
+
+        // Prevent navigating into future dates.
+        if (nextDate > todayDate) {
+            return;
+        }
+
+        onSelectedDateChange(nextDate);
+    }
+
     return (
         <section
             className="rounded-2xl border border-border bg-surface p-5"
             aria-labelledby="health-progress-title"
         >
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                {/* Date navigation */}
                 <div>
                     <h2
                         id="health-progress-title"
                         className="text-base font-semibold text-text-primary"
                     >
-                        Today&apos;s progress
+                        {isToday ? "Today's progress" : "Daily progress"}
                     </h2>
 
-                    <p className="mt-1 text-sm text-text-secondary">
-                        {dateLabel}
+                    <div className="mt-2 flex items-center gap-2">
+                        <button
+                            type="button"
+                            aria-label="View previous day"
+                            onClick={() => navigateDay(-1)}
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary"
+                        >
+                            <ChevronLeft
+                                className="size-4"
+                                aria-hidden="true"
+                            />
+                        </button>
+
+                        <span
+                            aria-live="polite"
+                            className="min-w-28 text-center text-sm font-medium text-text-primary"
+                        >
+                            {displayDate}
+                        </span>
+
+                        <button
+                            type="button"
+                            aria-label="View next day"
+                            onClick={() => navigateDay(1)}
+                            disabled={isToday || isFutureDate}
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            <ChevronRight
+                                className="size-4"
+                                aria-hidden="true"
+                            />
+                        </button>
+
+                        {!isToday && (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    onSelectedDateChange(todayDate)
+                                }
+                                className="ml-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-elevated"
+                            >
+                                Today
+                            </button>
+                        )}
+                    </div>
+
+                    <p className="mt-1 text-xs text-text-secondary">
+                        {formatDateDisplay(selectedDate)}
                     </p>
                 </div>
 
@@ -122,6 +207,7 @@ export function HealthProgress({
                 </Button>
             </div>
 
+            {/* Progress metrics */}
             {metrics.length > 0 ? (
                 <div className="mt-6 grid gap-x-8 gap-y-6 md:grid-cols-2">
                     {metrics.map((metric) => (
@@ -145,9 +231,8 @@ export function HealthProgress({
                     </p>
 
                     <p className="mx-auto mt-1 max-w-md text-sm text-text-secondary">
-                        Set targets for steps, sleep, water, or nutrition
-                        to track your daily progress. You can choose only
-                        the metrics that matter to you.
+                        Configure targets for steps, sleep, water,
+                        or nutrition to track your daily progress.
                     </p>
 
                     <Button
