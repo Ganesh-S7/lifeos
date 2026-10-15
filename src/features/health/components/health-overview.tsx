@@ -24,7 +24,6 @@ import {
     getTodayDateKey,
     getTodayHealthLog,
     getTodayHealthProgress,
-    getWeightTrend,
 } from "../utils/health-calculations";
 
 import { HealthLogDialog } from "./health-log-dialog";
@@ -32,7 +31,7 @@ import { HealthProgress } from "./health-progress";
 import { HealthSummary } from "./health-summary";
 import { RecentHealthLogs } from "./recent-health-logs";
 import { ManageHealthTargetsDialog } from "./manage-health-targets-dialog";
-import { WeightTrendChart } from "./weight-trend-chart";
+import { HealthAnalytics } from "./health-analytics";
 
 export function HealthOverview() {
     useHealthHydration();
@@ -43,7 +42,9 @@ export function HealthOverview() {
 
     const [logDialogOpen, setLogDialogOpen] = useState(false);
     const [targetsDialogOpen, setTargetsDialogOpen] = useState(false);
-
+    const [selectedProgressDate, setSelectedProgressDate] = useState(
+        () => getTodayDateKey(),
+    );
     const [editingLog, setEditingLog] =
         useState<HealthLog | null>(null);
 
@@ -59,10 +60,14 @@ export function HealthOverview() {
     const latestSleep = getLatestSleepLog(logs);
 
     const recentLogs = getRecentHealthLogs(logs, 5);
-    const weightTrend = getWeightTrend(logs, new Date(), 30);
+
+    const selectedProgressLog = getTodayHealthLog(
+        logs,
+        selectedProgressDate,
+    );
 
     const progress = getTodayHealthProgress(
-        todayLog,
+        selectedProgressLog,
         targets,
     );
 
@@ -165,11 +170,13 @@ export function HealthOverview() {
 
                     <HealthProgress
                         metrics={progress}
-                        dateLabel={formatDateDisplay(today)}
+                        selectedDate={selectedProgressDate}
+                        todayDate={today}
+                        onSelectedDateChange={setSelectedProgressDate}
                         onManageTargets={() => setTargetsDialogOpen(true)}
                     />
 
-                    <WeightTrendChart data={weightTrend} />
+                    <HealthAnalytics logs={logs} />
 
                     <RecentHealthLogs
                         logs={recentLogs}
