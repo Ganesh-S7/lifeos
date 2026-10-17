@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -10,4 +5,232 @@ generator client {
 
 datasource db {
   provider = "mysql"
+}
+
+enum FinanceTransactionType {
+  income
+  expense
+  transfer
+  investment_purchase
+  investment_sale
+}
+
+model User {
+  id            String   @id
+  name          String   @db.Text
+  email         String
+  emailVerified Boolean  @default(false)
+  image         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+
+  bankAccounts    BankAccount[]
+  investments     Investment[]
+  liabilities     Liability[]
+  transactions    FinanceTransaction[]
+  positionHistory FinancialPositionSnapshot[]
+
+  healthLogs    HealthLog[]
+  healthTargets HealthTargets?
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?  @db.Text
+  userAgent String?  @db.Text
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId(length: 191)])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @db.Text
+  providerId            String    @db.Text
+  userId                String
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId(length: 191)])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier(length: 191)])
+  @@map("verification")
+}
+
+// ============================================
+// FINANCE
+// ============================================
+
+model BankAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  name              String
+  balanceSnapshot   Decimal  @db.Decimal(18, 2)
+  balanceSnapshotAt DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sourceTransactions      FinanceTransaction[] @relation("TransactionSourceAccount")
+  destinationTransactions FinanceTransaction[] @relation("TransactionDestinationAccount")
+
+  @@index([userId])
+  @@map("bank_accounts")
+}
+
+model Investment {
+  id                  String   @id @default(cuid())
+  userId              String
+  name                String
+  type                String
+  valuationSnapshot   Decimal  @db.Decimal(18, 2)
+  valuationSnapshotAt DateTime
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions FinanceTransaction[]
+
+  @@index([userId])
+  @@map("investments")
+}
+
+model Liability {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  type           String
+  balance        Decimal  @db.Decimal(18, 2)
+  monthlyPayment Decimal? @db.Decimal(18, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("liabilities")
+}
+
+model FinanceTransaction {
+  id                   String                 @id @default(cuid())
+  userId               String
+  type                 FinanceTransactionType
+  amount               Decimal                @db.Decimal(18, 2)
+  description          String                 @db.Text
+  date                 DateTime               @db.Date
+  recordedAt           DateTime               @default(now())
+  category             String?
+  accountId            String
+  destinationAccountId String?
+  investmentId         String?
+  note                 String?                @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  account BankAccount @relation("TransactionSourceAccount", fields: [accountId], references: [id], onDelete: Restrict)
+
+  destinationAccount BankAccount? @relation("TransactionDestinationAccount", fields: [destinationAccountId], references: [id], onDelete: Restrict)
+
+  investment Investment? @relation(fields: [investmentId], references: [id], onDelete: Restrict)
+
+  @@index([userId, date])
+  @@index([accountId])
+  @@index([destinationAccountId])
+  @@index([investmentId])
+  @@map("finance_transactions")
+}
+
+model FinancialPositionSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  recordedAt  DateTime @default(now())
+  bank        Decimal  @db.Decimal(18, 2)
+  investments Decimal  @db.Decimal(18, 2)
+  debt        Decimal  @db.Decimal(18, 2)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+  @@map("financial_position_snapshots")
+}
+
+// ============================================
+// HEALTH
+// ============================================
+
+model HealthLog {
+  id     String   @id @default(cuid())
+  userId String
+  date   DateTime @db.Date
+
+  weightKg     Decimal? @db.Decimal(6, 2)
+  steps        Int?
+  sleepMinutes Int?
+  waterMl      Int?
+  caloriesKcal Int?
+  proteinGrams Decimal? @db.Decimal(8, 2)
+  carbsGrams   Decimal? @db.Decimal(8, 2)
+  fiberGrams   Decimal? @db.Decimal(8, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("health_logs")
+}
+
+model HealthTargets {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  weightGoalKg       Decimal? @db.Decimal(6, 2)
+  stepsPerDay        Int?
+  sleepMinutesPerDay Int?
+  waterMlPerDay      Int?
+  caloriesKcalPerDay Int?
+  proteinGramsPerDay Decimal? @db.Decimal(8, 2)
+  carbsGramsPerDay   Decimal? @db.Decimal(8, 2)
+  fiberGramsPerDay   Decimal? @db.Decimal(8, 2)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("health_targets")
 }
