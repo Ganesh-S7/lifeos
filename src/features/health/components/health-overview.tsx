@@ -32,9 +32,27 @@ import { HealthSummary } from "./health-summary";
 import { RecentHealthLogs } from "./recent-health-logs";
 import { ManageHealthTargetsDialog } from "./manage-health-targets-dialog";
 import { HealthAnalytics } from "./health-analytics";
+import { authClient } from "@/lib/auth-client";
 
 export function HealthOverview() {
-    useHealthHydration();
+
+    const {
+        data: session,
+        isPending: sessionPending,
+    } = authClient.useSession();
+
+    useHealthHydration(
+        session?.user.id,
+        sessionPending,
+    );
+
+    const loadError = useHealthStore(
+        (state) => state.loadError,
+    );
+
+    const initializeForUser = useHealthStore(
+        (state) => state.initializeForUser,
+    );
 
     const logs = useHealthStore((state) => state.logs);
     const targets = useHealthStore((state) => state.targets);
@@ -42,9 +60,10 @@ export function HealthOverview() {
 
     const [logDialogOpen, setLogDialogOpen] = useState(false);
     const [targetsDialogOpen, setTargetsDialogOpen] = useState(false);
-    const [selectedProgressDate, setSelectedProgressDate] = useState(
-        () => getTodayDateKey(),
-    );
+    // `null` means the date is chosen automatically from available logs.
+    // Once the user navigates dates, their selection is preserved.
+    const [selectedProgressDate, setSelectedProgressDate] =
+        useState<string | null>(null);
     const [editingLog, setEditingLog] =
         useState<HealthLog | null>(null);
 
@@ -55,6 +74,17 @@ export function HealthOverview() {
 
     const today = getTodayDateKey();
 
+    const latestLogDate = [...logs]
+        .sort((a, b) => b.date.localeCompare(a.date))[0]?.date;
+
+    // Start on today when there's a log for today. Otherwise, show the
+    // most recent day with a log instead of an empty progress view.
+    const defaultProgressDate = logs.some((log) => log.date === today)
+        ? today
+        : latestLogDate ?? today;
+
+    const activeProgressDate = selectedProgressDate ?? defaultProgressDate;
+
     const todayLog = getTodayHealthLog(logs, today);
     const latestWeight = getLatestWeightLog(logs);
     const latestSleep = getLatestSleepLog(logs);
@@ -63,7 +93,7 @@ export function HealthOverview() {
 
     const selectedProgressLog = getTodayHealthLog(
         logs,
-        selectedProgressDate,
+        activeProgressDate,
     );
 
     const progress = getTodayHealthProgress(
@@ -91,13 +121,13 @@ export function HealthOverview() {
         }
     }
 
-    function handleDeleteLog() {
+    async function handleDeleteLog() {
         if (!deleteTarget) {
             return;
         }
 
         try {
-            healthActions.deleteLog(deleteTarget.id);
+            await healthActions.deleteLog(deleteTarget.id);
 
             setPageError("");
         } catch (cause) {
@@ -155,9 +185,31 @@ export function HealthOverview() {
 
             {!ready ? (
                 <div className="rounded-2xl border border-border bg-surface p-6">
-                    <p className="text-sm text-text-secondary">
-                        Loading your health data…
-                    </p>
+                    {loadError ? (
+                        <>
+                            <p role="alert" className="text-sm text-danger">
+                                {loadError}
+                            </p>
+
+                            {session?.user.id && (
+                                <Button
+                                    type="button"
+                                    className="mt-4"
+                                    onClick={() => {
+                                        void initializeForUser(
+                                            session.user.id,
+                                        );
+                                    }}
+                                >
+                                    Retry
+                                </Button>
+                            )}
+                        </>
+                    ) : (
+                        <p className="text-sm text-text-secondary">
+                            Loading your health data…
+                        </p>
+                    )}
                 </div>
             ) : (
                 <>
@@ -170,9 +222,11 @@ export function HealthOverview() {
 
                     <HealthProgress
                         metrics={progress}
-                        selectedDate={selectedProgressDate}
+                        selectedDate={activeProgressDate}
                         todayDate={today}
-                        onSelectedDateChange={setSelectedProgressDate}
+                        onSelectedDateChange={(date) =>
+                            setSelectedProgressDate(date)
+                        }
                         onManageTargets={() => setTargetsDialogOpen(true)}
                     />
 

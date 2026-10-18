@@ -126,9 +126,9 @@ export function ManageHealthTargetsDialog({
         onOpenChange(nextOpen);
     }
 
-    const onSubmit = handleSubmit((values) => {
+    const onSubmit = handleSubmit(async (values) => {
         try {
-            healthActions.saveTargets(values);
+            await healthActions.saveTargets(values);
             handleDialogOpenChange(false);
         } catch (cause) {
             setError("root.server", {
@@ -180,8 +180,8 @@ export function ManageHealthTargetsDialog({
                             aria-controls="health-targets-tabpanel"
                             onClick={() => setActiveTab("body")}
                             className={`flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === "body"
-                                    ? "text-text-primary"
-                                    : "text-text-secondary hover:text-text-primary"
+                                ? "text-text-primary"
+                                : "text-text-secondary hover:text-text-primary"
                                 }`}
                             style={{
                                 borderBottomColor:
@@ -201,8 +201,8 @@ export function ManageHealthTargetsDialog({
                             aria-controls="health-targets-tabpanel"
                             onClick={() => setActiveTab("nutrition")}
                             className={`flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === "nutrition"
-                                    ? "text-text-primary"
-                                    : "text-text-secondary hover:text-text-primary"
+                                ? "text-text-primary"
+                                : "text-text-secondary hover:text-text-primary"
                                 }`}
                             style={{
                                 borderBottomColor:
@@ -353,9 +353,9 @@ export function ManageHealthTargetsDialog({
                                 type="button"
                                 variant="outline"
                                 disabled={isSubmitting}
-                                onClick={() => {
+                                onClick={async () => {
                                     try {
-                                        healthActions.clearTargets();
+                                        await healthActions.clearTargets();
                                         handleDialogOpenChange(false);
                                     } catch {
                                         setError("root.server", {

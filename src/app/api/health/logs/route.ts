@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
     formatDateValue,
-    parseDateValue,
 } from "@/lib/utils/date";
 import type { HealthLog as HealthLogDto } from "@/features/health/types/health";
 
@@ -140,17 +139,20 @@ export async function POST(request: Request) {
             );
         }
 
-        // Keep the date as a local calendar date.
-        const date = parseDateValue(input.date);
+        const [year, month, day] = input.date.split("-").map(Number);
+
+        const date = new Date(
+            Date.UTC(year, month - 1, day),
+        );
 
         // 4. Find an existing record by ID, but only for this user.
         const existingById = input.id
             ? await prisma.healthLog.findFirst({
-                  where: {
-                      id: input.id,
-                      userId,
-                  },
-              })
+                where: {
+                    id: input.id,
+                    userId,
+                },
+            })
             : null;
 
         // 5. Find an existing record for the requested date.
@@ -199,17 +201,17 @@ export async function POST(request: Request) {
 
         const savedLog = existing
             ? await prisma.healthLog.update({
-                  where: {
-                      id: existing.id,
-                  },
-                  data: logData,
-              })
+                where: {
+                    id: existing.id,
+                },
+                data: logData,
+            })
             : await prisma.healthLog.create({
-                  data: {
-                      ...logData,
-                      userId,
-                  },
-              });
+                data: {
+                    ...logData,
+                    userId,
+                },
+            });
 
         // 7. Convert database values into the frontend DTO.
         const response: HealthLogDto = {

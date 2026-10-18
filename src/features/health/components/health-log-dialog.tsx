@@ -260,7 +260,7 @@ export function HealthLogDialog({
     /* Save                                                                    */
     /* ---------------------------------------------------------------------- */
 
-    const onSubmit = handleSubmit((values) => {
+    const onSubmit = handleSubmit(async (values) => {
         try {
             /*
              * Resolve the record by the submitted date.
@@ -273,7 +273,7 @@ export function HealthLogDialog({
                 .getState()
                 .logs.find((log) => log.date === values.date);
 
-            healthActions.saveLog({
+            await healthActions.saveLog({
                 ...values,
                 id: storedLogForDate?.id ?? editLog?.id,
             });
@@ -356,11 +356,10 @@ export function HealthLogDialog({
                             aria-selected={activeTab === "body"}
                             aria-controls="health-body-panel"
                             onClick={() => setActiveTab("body")}
-                            className={`flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                                activeTab === "body"
+                            className={`flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === "body"
                                     ? "text-text-primary"
                                     : "text-text-secondary hover:text-text-primary"
-                            }`}
+                                }`}
                             style={{
                                 borderBottomColor:
                                     activeTab === "body"
@@ -378,11 +377,10 @@ export function HealthLogDialog({
                             aria-selected={activeTab === "nutrition"}
                             aria-controls="health-nutrition-panel"
                             onClick={() => setActiveTab("nutrition")}
-                            className={`flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                                activeTab === "nutrition"
+                            className={`flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === "nutrition"
                                     ? "text-text-primary"
                                     : "text-text-secondary hover:text-text-primary"
-                            }`}
+                                }`}
                             style={{
                                 borderBottomColor:
                                     activeTab === "nutrition"

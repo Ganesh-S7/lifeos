@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Activity } from "lucide-react";
 import {
     Area,
@@ -97,27 +97,27 @@ const trendRanges: {
     value: TrendRange;
     label: string;
 }[] = [
-    {
-        value: 7,
-        label: "1 Week",
-    },
-    {
-        value: 15,
-        label: "15 Days",
-    },
-    {
-        value: 30,
-        label: "30 Days",
-    },
-    {
-        value: 60,
-        label: "60 Days",
-    },
-    {
-        value: 90,
-        label: "90 Days",
-    },
-];
+        {
+            value: 7,
+            label: "1 Week",
+        },
+        {
+            value: 15,
+            label: "15 Days",
+        },
+        {
+            value: 30,
+            label: "30 Days",
+        },
+        {
+            value: 60,
+            label: "60 Days",
+        },
+        {
+            value: 90,
+            label: "90 Days",
+        },
+    ];
 
 function getMetricValue(
     point: HealthAnalyticsPoint,
@@ -237,22 +237,45 @@ interface HealthAnalyticsProps {
 export function HealthAnalytics({
     logs,
 }: HealthAnalyticsProps) {
-    const [activeMetricKey, setActiveMetricKey] =
-        useState<AnalyticsMetricKey>("weightKg");
+    // `null` means automatic selection: use the first metric with data.
+    // Once the user picks a metric, keep that explicit selection.
+    const [selectedMetricKey, setSelectedMetricKey] =
+        useState<AnalyticsMetricKey | null>(null);
 
     const [trendDays, setTrendDays] =
         useState<TrendRange>(30);
+
+    const trendData = useMemo(
+        () => getHealthAnalyticsTrend(logs, new Date(), trendDays),
+        [logs, trendDays],
+    );
+
+    const availableMetricKeys = useMemo(
+        () =>
+            analyticsMetrics
+                .filter((metric) =>
+                    trendData.some((point) => {
+                        const value = getMetricValue(point, metric.key);
+
+                        return (
+                            typeof value === "number" &&
+                            Number.isFinite(value)
+                        );
+                    }),
+                )
+                .map((metric) => metric.key),
+        [trendData],
+    );
+
+    // Derive the default from the available data instead of setting state
+    // inside an effect. This also works when database logs load asynchronously.
+    const activeMetricKey =
+        selectedMetricKey ?? availableMetricKeys[0] ?? "weightKg";
 
     const activeMetric =
         analyticsMetrics.find(
             (metric) => metric.key === activeMetricKey,
         ) ?? analyticsMetrics[0];
-
-    const trendData = getHealthAnalyticsTrend(
-        logs,
-        new Date(),
-        trendDays,
-    );
 
     // Include only dates where the selected metric has a recorded value.
     const chartData = trendData.filter((point) => {
@@ -347,18 +370,17 @@ export function HealthAnalytics({
                             type="button"
                             aria-pressed={isActive}
                             onClick={() =>
-                                setActiveMetricKey(metric.key)
+                                setSelectedMetricKey(metric.key)
                             }
-                            className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                                isActive
+                            className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${isActive
                                     ? "border-primary bg-surface-elevated text-text-primary"
                                     : "border-border text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
-                            }`}
+                                }`}
                             style={
                                 isActive
                                     ? {
-                                          borderColor: "var(--brand)",
-                                      }
+                                        borderColor: "var(--brand)",
+                                    }
                                     : undefined
                             }
                         >
@@ -374,7 +396,14 @@ export function HealthAnalytics({
                     {activeMetric.description}
                 </h3>
 
-                {hasEnoughData ? (
+                {hasAnyData && !hasEnoughData && (
+                    <p className="mt-2 text-xs text-text-secondary">
+                        One measurement is available for this period. Record another
+                        measurement on a different day to see how it changes over time.
+                    </p>
+                )}
+
+                {hasAnyData ? (
                     <div className="mt-4 h-72 w-full">
                         <ResponsiveContainer
                             width="100%"
@@ -515,15 +544,11 @@ export function HealthAnalytics({
                         </div>
 
                         <p className="mt-3 text-sm font-medium text-text-primary">
-                            {!hasAnyData
-                                ? `No ${activeMetric.label.toLowerCase()} data in this period`
-                                : "Not enough data to show a trend"}
+                            No {activeMetric.label.toLowerCase()} data in this period
                         </p>
 
                         <p className="mt-1 max-w-sm text-sm text-text-secondary">
-                            {!hasAnyData
-                                ? `Record ${activeMetric.label.toLowerCase()} in your daily health logs during this period to see its trend here.`
-                                : `You have only one recorded value in this period. Record ${activeMetric.label.toLowerCase()} on another day to see its trend.`}
+                            Record {activeMetric.label.toLowerCase()} in your daily health logs during this period to see its trend here.
                         </p>
                     </div>
                 )}
