@@ -2,17 +2,70 @@
 
 import {
   Bell,
+  LogOut,
   Menu,
   Search,
   Sun,
 } from "lucide-react";
 import { IconButton } from "@/components/ui";
+import { authClient } from "@/lib/auth-client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
+  const router = useRouter();
+
+  const { data: session, isPending } = authClient.useSession();
+
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+
+  const userName =
+    session?.user.name?.trim() ||
+    (isPending ? "Loading account..." : "Personal account");
+
+  const initials =
+    userName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join("")
+      .toUpperCase() || "U";
+
+  async function handleSignOut() {
+    if (isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+    setSignOutError("");
+
+    try {
+      const { error } = await authClient.signOut();
+
+      if (error) {
+        setSignOutError(
+          "Unable to sign out. Please try again.",
+        );
+        return;
+      }
+
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      setSignOutError(
+        "Something went wrong while signing out.",
+      );
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
+
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-border-subtle bg-background/85 backdrop-blur-xl">
       <div className="flex h-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -74,26 +127,54 @@ export function Header({ onMenuClick }: HeaderProps) {
             <span className="absolute right-2 top-1.5 size-1.5 rounded-full bg-danger ring-2 ring-background" />
           </IconButton>
 
-          {/* Profile */}
-          <button
-            type="button"
-            className="ml-1 flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-surface-elevated"
-          >
-            <span className="flex size-7 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-              GS
+          {/* Authenticated user */}
+          <div className="ml-1 flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+              {initials}
             </span>
 
-            <div className="hidden text-left xl:block">
-              <p className="text-[11px] font-medium text-text-primary">
-                Ganesh S
+            <div className="hidden min-w-0 text-left xl:block">
+              <p className="max-w-36 truncate text-[11px] font-medium text-text-primary">
+                {userName}
               </p>
-              <p className="text-[10px] text-text-muted">
-                Personal
+
+              <p className="max-w-36 truncate text-[10px] text-text-muted">
+                Personal account
               </p>
             </div>
+          </div>
+
+          {/* Sign out */}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={isSigningOut || isPending || !session}
+            aria-label="Sign out"
+            title="Sign out"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSigningOut ? (
+              <span
+                className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden="true"
+              />
+            ) : (
+              <LogOut
+                className="size-4"
+                aria-hidden="true"
+              />
+            )}
           </button>
         </div>
       </div>
+      {signOutError && (
+        <p
+          role="alert"
+          className="absolute right-4 top-full mt-2 rounded-lg border border-danger/20 bg-surface px-3 py-2 text-sm text-danger shadow-lg"
+        >
+          {signOutError}
+        </p>
+      )}
     </header>
   );
 }
