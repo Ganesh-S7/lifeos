@@ -11,6 +11,8 @@ import {
 } from "@/features/finance/components/expenses/expenses-toolbar";
 import { ExpensesTable } from "@/features/finance/components/expenses/expenses-table";
 import { ExpensesSkeleton } from "@/features/finance/components/expenses/expenses-skeleton";
+import { useFinanceMutation } from "@/features/finance/hooks/use-finance-mutation";
+import type { FinanceMutationCallback } from "@/features/finance/utils/finance-mutation";
 import { notify } from "@/lib/notifications";
 
 import type { Expense } from "@/features/finance/types/expense";
@@ -33,6 +35,7 @@ const categories = [
 export default function ExpensesPage() {
     const { data, ready, loadError, retry } = useFinance();
     const [error, setError] = useState("");
+    const deletion = useFinanceMutation();
     const expenses: Expense[] = data.transactions
         .filter((transaction) => transaction.type === "expense")
         .map((transaction) => ({
@@ -55,9 +58,9 @@ export default function ExpensesPage() {
     const [expenseToDelete, setExpenseToDelete] =
         useState<Expense | null>(null);
 
-    const handleSaveExpense = (data: ExpenseFormValues) => {
+    const handleSaveExpense: FinanceMutationCallback<ExpenseFormValues> = async (data) => {
         try {
-            financeActions.saveTransaction({
+            await financeActions.saveTransaction({
                 id: editingExpense?.id,
                 type: "expense",
                 amount: data.amount,
@@ -69,7 +72,6 @@ export default function ExpensesPage() {
             });
             setError("");
             notify.success(editingExpense ? "Expense updated." : "Expense saved.");
-            setEditingExpense(null);
             return true;
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : "Could not save expense.");
@@ -86,19 +88,23 @@ export default function ExpensesPage() {
         setAddExpenseOpen(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (!expenseToDelete) return;
 
-        try {
-            financeActions.deleteTransaction(expenseToDelete.id);
-            setError("");
-            notify.success("Expense deleted.");
-        } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Could not delete expense.");
-            notify.error("Unable to delete this expense. Please try again.");
-        }
-
-        setExpenseToDelete(null);
+        return deletion.run(async () => {
+            await financeActions.deleteTransaction(expenseToDelete.id);
+            return true;
+        }, {
+            onSuccess: () => {
+                setError("");
+                notify.success("Expense deleted.");
+                setExpenseToDelete(null);
+            },
+            onError: (cause) => {
+                setError(cause instanceof Error ? cause.message : "Could not delete expense.");
+                notify.error("Unable to delete this expense. Please try again.");
+            },
+        });
     };
 
     const handleResetFilters = () => {
@@ -236,13 +242,13 @@ export default function ExpensesPage() {
             <DeleteModal
                 open={expenseToDelete !== null}
                 onOpenChange={(open) => {
-                    if (!open) {
+                    if (!open && !deletion.isPending()) {
                         setExpenseToDelete(null);
                     }
                 }}
                 title="Delete expense?"
                 description={
-                    expenseToDelete ? (
+                    error || (expenseToDelete ? (
                         <>
                             Are you sure you want to delete{" "}
                             <span className="font-medium text-text-primary">
@@ -252,8 +258,9 @@ export default function ExpensesPage() {
                         </>
                     ) : (
                         "This expense will be permanently removed."
-                    )
+                    ))
                 }
+                isLoading={deletion.isPendingState}
                 confirmText="Delete expense"
                 onConfirm={handleConfirmDelete}
             />

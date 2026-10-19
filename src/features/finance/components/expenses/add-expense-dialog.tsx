@@ -23,12 +23,14 @@ import {
 } from "../../schemas/expense-schema";
 import { Expense } from "../../types/expense";
 import { parseDateValue } from "@/lib/utils/date";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useFinanceMutation } from "../../hooks/use-finance-mutation";
+import type { FinanceMutationCallback } from "../../utils/finance-mutation";
 
 interface AddExpenseDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSubmit: (data: ExpenseFormValues) => boolean;
+    onSubmit: FinanceMutationCallback<ExpenseFormValues>;
     expense?: Expense | null;
     accounts: { label: string; value: string }[];
     error?: string;
@@ -61,6 +63,8 @@ export function AddExpenseDialog({
     accounts,
     error,
 }: AddExpenseDialogProps) {
+    const mutation = useFinanceMutation();
+    const [submissionError, setSubmissionError] = useState("");
     const {
         register,
         handleSubmit,
@@ -76,11 +80,19 @@ export function AddExpenseDialog({
         defaultValues,
     });
 
-    const handleFormSubmit = (data: ExpenseFormValues) => {
-        if (onSubmit(data)) onOpenChange(false);
+    const handleFormSubmit = async (data: ExpenseFormValues) => {
+        setSubmissionError("");
+        return mutation.run(() => onSubmit(data), {
+            onSuccess: () => onOpenChange(false),
+            onError: (cause) => setSubmissionError(
+                cause instanceof Error ? cause.message : "Could not save expense. Please try again.",
+            ),
+        });
     };
 
     const handleCancel = () => {
+        if (mutation.isPending() || isSubmitting) return;
+        setSubmissionError("");
         reset();
         onOpenChange(false);
     };
@@ -103,7 +115,14 @@ export function AddExpenseDialog({
     }, [open, expense, reset]);
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (mutation.isPending() || isSubmitting) return;
+                setSubmissionError("");
+                onOpenChange(nextOpen);
+            }}
+        >
             <DialogContent className="max-w-130">
                 <DialogHeader>
                     <DialogTitle>
@@ -121,159 +140,164 @@ export function AddExpenseDialog({
                     onSubmit={handleSubmit(handleFormSubmit)}
                     className="mt-6 space-y-5"
                 >
-                    {/* Amount */}
-                    <div className="space-y-2">
-                        <label
-                            htmlFor="amount"
-                            className="text-xs font-medium text-text-primary"
-                        >
-                            Amount
-                        </label>
+                    <fieldset disabled={isSubmitting || mutation.isPendingState} className="space-y-5">
+                        {/* Amount */}
+                        <div className="space-y-2">
+                            <label
+                                htmlFor="amount"
+                                className="text-xs font-medium text-text-primary"
+                            >
+                                Amount
+                            </label>
 
-                        <div className="relative">
-                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-                                ₹
-                            </span>
+                            <div className="relative">
+                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
+                                    ₹
+                                </span>
+
+                                <Input
+                                    id="amount"
+                                    placeholder="0.00"
+                                    maxLength={10}
+                                    className="pl-8"
+                                    {...register("amount", {
+                                        valueAsNumber: true,
+                                    })}
+                                />
+                            </div>
+
+                            {errors.amount && (
+                                <p className="text-xs text-danger">
+                                    {errors.amount.message}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Merchant */}
+                        <div className="space-y-2">
+                            <label
+                                htmlFor="merchant"
+                                className="text-xs font-medium text-text-primary"
+                            >
+                                Merchant
+                            </label>
 
                             <Input
-                                id="amount"
-                                placeholder="0.00"
-                                maxLength={10}
-                                className="pl-8"
-                                {...register("amount", {
-                                    valueAsNumber: true,
-                                })}
+                                id="merchant"
+                                placeholder="e.g. Swiggy, Amazon, Uber"
+                                {...register("merchant")}
+                            />
+
+                            {errors.merchant && (
+                                <p className="text-xs text-danger">
+                                    {errors.merchant.message}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Category + Account */}
+                        <div className="grid gap-5 sm:grid-cols-2">
+                            <Controller
+                                name="category"
+                                control={control}
+                                render={({ field, fieldState }) => (
+                                    <Select
+                                        id="category"
+                                        label="Category"
+                                        options={categoryOptions}
+                                        value={field.value}
+                                        onChange={(value) => field.onChange(value ?? "")}
+                                        placeholder="Select category"
+                                        required
+                                        error={fieldState.error?.message}
+                                    />
+                                )}
+                            />
+
+                            <Controller
+                                name="account"
+                                control={control}
+                                render={({ field, fieldState }) => (
+                                    <Select
+                                        id="account"
+                                        label="Account"
+                                        options={accounts}
+                                        value={field.value}
+                                        onChange={(value) => field.onChange(value ?? "")}
+                                        placeholder="Select account"
+                                        required
+                                        error={fieldState.error?.message}
+                                    />
+                                )}
                             />
                         </div>
 
-                        {errors.amount && (
-                            <p className="text-xs text-danger">
-                                {errors.amount.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Merchant */}
-                    <div className="space-y-2">
-                        <label
-                            htmlFor="merchant"
-                            className="text-xs font-medium text-text-primary"
-                        >
-                            Merchant
-                        </label>
-
-                        <Input
-                            id="merchant"
-                            placeholder="e.g. Swiggy, Amazon, Uber"
-                            {...register("merchant")}
-                        />
-
-                        {errors.merchant && (
-                            <p className="text-xs text-danger">
-                                {errors.merchant.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Category + Account */}
-                    <div className="grid gap-5 sm:grid-cols-2">
+                        {/* Date */}
                         <Controller
-                            name="category"
+                            name="date"
                             control={control}
                             render={({ field, fieldState }) => (
-                                <Select
-                                    id="category"
-                                    label="Category"
-                                    options={categoryOptions}
+                                <DatePicker
+                                    id="date"
+                                    label="Date"
                                     value={field.value}
-                                    onChange={(value) => field.onChange(value ?? "")}
-                                    placeholder="Select category"
+                                    onChange={field.onChange}
                                     required
                                     error={fieldState.error?.message}
                                 />
                             )}
                         />
 
-                        <Controller
-                            name="account"
-                            control={control}
-                            render={({ field, fieldState }) => (
-                                <Select
-                                    id="account"
-                                    label="Account"
-                                    options={accounts}
-                                    value={field.value}
-                                    onChange={(value) => field.onChange(value ?? "")}
-                                    placeholder="Select account"
-                                    required
-                                    error={fieldState.error?.message}
-                                />
-                            )}
-                        />
-                    </div>
+                        {/* Note */}
+                        <div className="space-y-2">
+                            <label
+                                htmlFor="note"
+                                className="text-xs font-medium text-text-primary"
+                            >
+                                Note
+                                <span className="ml-1 font-normal text-text-muted">
+                                    (optional)
+                                </span>
+                            </label>
 
-                    {/* Date */}
-                    <Controller
-                        name="date"
-                        control={control}
-                        render={({ field, fieldState }) => (
-                            <DatePicker
-                                id="date"
-                                label="Date"
-                                value={field.value}
-                                onChange={field.onChange}
-                                required
-                                error={fieldState.error?.message}
+                            <textarea
+                                id="note"
+                                rows={3}
+                                placeholder="Add a note..."
+                                {...register("note")}
+                                className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-text-primary outline-none transition placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
                             />
+
+                            {errors.note && (
+                                <p className="text-xs text-danger">
+                                    {errors.note.message}
+                                </p>
+                            )}
+                        </div>
+
+                        {(submissionError || error) && (
+                            <p role="alert" className="text-xs text-danger">{submissionError || error}</p>
                         )}
-                    />
 
-                    {/* Note */}
-                    <div className="space-y-2">
-                        <label
-                            htmlFor="note"
-                            className="text-xs font-medium text-text-primary"
-                        >
-                            Note
-                            <span className="ml-1 font-normal text-text-muted">
-                                (optional)
-                            </span>
-                        </label>
+                        <DialogFooter className="mt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCancel}
+                                disabled={isSubmitting || mutation.isPendingState}
+                            >
+                                Cancel
+                            </Button>
 
-                        <textarea
-                            id="note"
-                            rows={3}
-                            placeholder="Add a note..."
-                            {...register("note")}
-                            className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-text-primary outline-none transition placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
-                        />
-
-                        {errors.note && (
-                            <p className="text-xs text-danger">
-                                {errors.note.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {error && <p role="alert" className="text-xs text-danger">{error}</p>}
-
-                    <DialogFooter className="mt-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleCancel}
-                        >
-                            Cancel
-                        </Button>
-
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting
-                                ? "Saving..."
-                                : expense
-                                    ? "Save changes"
-                                    : "Add expense"}
-                        </Button>
-                    </DialogFooter>
+                            <Button type="submit" disabled={isSubmitting || mutation.isPendingState}>
+                                {isSubmitting || mutation.isPendingState
+                                    ? "Saving..."
+                                    : expense
+                                        ? "Save changes"
+                                        : "Add expense"}
+                            </Button>
+                        </DialogFooter>
+                    </fieldset>
                 </form>
             </DialogContent>
         </Dialog>

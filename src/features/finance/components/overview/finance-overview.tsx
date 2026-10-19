@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button, DeleteModal, LoadError, Stat } from "@/components/ui";
+import { useFinanceMutation } from "../../hooks/use-finance-mutation";
 import { notify } from "@/lib/notifications";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateDisplay, formatDateValue } from "@/lib/utils/date";
@@ -37,6 +38,7 @@ export function FinanceOverview() {
     const [editId, setEditId] = useState<string>();
     const [target, setTarget] = useState<{ kind: ManagerKind; id: string; name: string; } | null>(null);
     const [error, setError] = useState("");
+    const deletion = useFinanceMutation();
     const now = new Date();
     const month = formatDateValue(now).slice(0, 7);
     const snapshot = financialSnapshot(data);
@@ -76,25 +78,30 @@ export function FinanceOverview() {
         setError("");
     }
 
-    function remove() {
+    async function remove() {
         if (!target) return;
-        try {
-            if (target.kind === "account") financeActions.deleteAccount(target.id);
-            if (target.kind === "investment") financeActions.deleteInvestment(target.id);
-            if (target.kind === "liability") financeActions.deleteLiability(target.id);
-            if (target.kind === "transaction") financeActions.deleteTransaction(target.id);
-            setError("");
-            const label = target.kind === "account" ? "Bank account"
-                : target.kind === "investment" ? "Investment"
-                    : target.kind === "liability" ? "Liability" : "Transaction";
-            notify.success(`${label} deleted.`);
-        } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Could not delete item.");
-            notify.error("Unable to delete this item.", {
-                description: "Review any linked transactions and try again.",
-            });
-        }
-        setTarget(null);
+        return deletion.run(async () => {
+            if (target.kind === "account") await financeActions.deleteAccount(target.id);
+            if (target.kind === "investment") await financeActions.deleteInvestment(target.id);
+            if (target.kind === "liability") await financeActions.deleteLiability(target.id);
+            if (target.kind === "transaction") await financeActions.deleteTransaction(target.id);
+            return true;
+        }, {
+            onSuccess: () => {
+                setError("");
+                const label = target.kind === "account" ? "Bank account"
+                    : target.kind === "investment" ? "Investment"
+                        : target.kind === "liability" ? "Liability" : "Transaction";
+                notify.success(`${label} deleted.`);
+                setTarget(null);
+            },
+            onError: (cause) => {
+                setError(cause instanceof Error ? cause.message : "Could not delete item.");
+                notify.error("Unable to delete this item.", {
+                    description: "Review any linked transactions and try again.",
+                });
+            },
+        });
     }
 
     const groups = [
@@ -356,9 +363,12 @@ export function FinanceOverview() {
                 debt={snapshot.debt}
                 netWorth={snapshot.netWorth}
             />
-            <DeleteModal open={target !== null} onOpenChange={(value) => !value && setTarget(null)}
+            <DeleteModal open={target !== null} onOpenChange={(value) => {
+                if (!value && !deletion.isPending()) setTarget(null);
+            }}
                 title={`Delete ${target?.name || "item"}?`}
-                description="This action cannot be undone. Items with linked transactions cannot be removed."
+                description={error || "This action cannot be undone. Items with linked transactions cannot be removed."}
+                isLoading={deletion.isPendingState}
                 confirmText="Delete" onConfirm={remove} />
         </div>
     );
