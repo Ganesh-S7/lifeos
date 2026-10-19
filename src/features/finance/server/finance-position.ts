@@ -1,73 +1,30 @@
-import { Decimal } from "@prisma/client/runtime/client";
-import type {
-    BankAccount,
-    FinanceTransaction,
-    Investment,
-    Liability,
-    Prisma,
-} from "@/generated/prisma/client";
+import type { Liability, Prisma } from "@/generated/prisma/client";
 import { toFinancialPositionSnapshotDto } from "./finance-dto";
+import {
+    applyLedgerTransaction,
+    createLedgerBalances,
+    decimalFromMinorUnits,
+    minorUnits,
+    type LedgerRecords,
+} from "./finance-ledger";
 
-interface PositionRecords {
-    accounts: BankAccount[];
-    investments: Investment[];
+interface PositionRecords extends LedgerRecords {
     liabilities: Liability[];
-    transactions: FinanceTransaction[];
-}
-
-// Exact integer cents avoid both JS floating point and Decimal precision-context rounding.
-// Reject unsupported precision; this is not a new financial rounding policy.
-function minorUnits(value: Prisma.Decimal): bigint {
-    if (!value.isFinite() || value.decimalPlaces() > 2) {
-        throw new RangeError("Finance values must have at most two decimal places.");
-    }
-    return BigInt(value.toFixed(2).replace(".", ""));
-}
-
-function decimalFromMinorUnits(value: bigint): Prisma.Decimal {
-    const absolute = value < BigInt(0) ? -value : value;
-    const whole = absolute / BigInt(100);
-    const fraction = (absolute % BigInt(100)).toString().padStart(2, "0");
-    return new Decimal(`${value < BigInt(0) ? "-" : ""}${whole}.${fraction}`);
 }
 
 /** Same snapshot cutoffs/effects as the frontend ledger, with exact money arithmetic. */
 export function calculateFinancialPosition(records: PositionRecords) {
-    const accounts = new Map(records.accounts.map((account) => [account.id, {
-        value: minorUnits(account.balanceSnapshot),
-        snapshotAt: account.balanceSnapshotAt.getTime(),
-    }]));
-    const investments = new Map(records.investments.map((investment) => [investment.id, {
-        value: minorUnits(investment.valuationSnapshot),
-        snapshotAt: investment.valuationSnapshotAt.getTime(),
-    }]));
-
+    const balances = createLedgerBalances(records);
     for (const transaction of records.transactions) {
-        const amount = minorUnits(transaction.amount);
-        const recordedAt = transaction.recordedAt.getTime();
-        const source = accounts.get(transaction.accountId);
-        if (source && recordedAt > source.snapshotAt) {
-            source.value += transaction.type === "income" || transaction.type === "investment_sale"
-                ? amount : -amount;
-        }
-        if (transaction.type === "transfer" && transaction.destinationAccountId) {
-            const destination = accounts.get(transaction.destinationAccountId);
-            if (destination && recordedAt > destination.snapshotAt) destination.value += amount;
-        }
-        const investment = transaction.investmentId
-            ? investments.get(transaction.investmentId) : undefined;
-        if (investment && recordedAt > investment.snapshotAt) {
-            if (transaction.type === "investment_purchase") investment.value += amount;
-            if (transaction.type === "investment_sale") investment.value -= amount;
-        }
+        applyLedgerTransaction(balances, transaction);
     }
 
     return {
         bank: decimalFromMinorUnits(
-            [...accounts.values()].reduce((sum, item) => sum + item.value, BigInt(0)),
+            [...balances.accounts.values()].reduce((sum, item) => sum + item.value, BigInt(0)),
         ),
         investments: decimalFromMinorUnits(
-            [...investments.values()].reduce((sum, item) => sum + item.value, BigInt(0)),
+            [...balances.investments.values()].reduce((sum, item) => sum + item.value, BigInt(0)),
         ),
         debt: decimalFromMinorUnits(
             records.liabilities.reduce((sum, item) => sum + minorUnits(item.balance), BigInt(0)),
