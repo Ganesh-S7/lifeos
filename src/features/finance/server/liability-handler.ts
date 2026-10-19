@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { financeConcurrencyError, financeMutationDiagnostics } from "./finance-concurrency";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -67,7 +68,12 @@ export async function handleLiabilityMutation(
                 message: "Liability not found.",
             }, 404);
         }
-        console.error(`[${request.method} /api/finance/liabilities]`, error);
+        const conflict = financeConcurrencyError(error);
+        if (conflict) {
+            console.warn(`[${request.method} /api/finance/liabilities]`, financeMutationDiagnostics(error));
+            return jsonNoStore(conflict, 409);
+        }
+        console.error(`[${request.method} /api/finance/liabilities]`, financeMutationDiagnostics(error));
         return jsonNoStore({
             error: "INTERNAL_SERVER_ERROR",
             message: "Unable to update your liabilities.",

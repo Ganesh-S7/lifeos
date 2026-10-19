@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { financeConcurrencyError, financeMutationDiagnostics } from "./finance-concurrency";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -67,7 +68,12 @@ export async function handleInvestmentMutation(
         if (error instanceof InvestmentInUseError) {
             return jsonNoStore({ error: "INVESTMENT_HAS_TRANSACTIONS", message: error.message }, 409);
         }
-        console.error(`[${request.method} /api/finance/investments]`, error);
+        const conflict = financeConcurrencyError(error);
+        if (conflict) {
+            console.warn(`[${request.method} /api/finance/investments]`, financeMutationDiagnostics(error));
+            return jsonNoStore(conflict, 409);
+        }
+        console.error(`[${request.method} /api/finance/investments]`, financeMutationDiagnostics(error));
         return jsonNoStore({
             error: "INTERNAL_SERVER_ERROR",
             message: "Unable to update your investments.",

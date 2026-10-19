@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { financeConcurrencyError, financeMutationDiagnostics } from "./finance-concurrency";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -63,7 +64,12 @@ export async function handleTransactionMutation(
         if (error instanceof LedgerConflictError) {
             return jsonNoStore({ error: error.code, message: error.message }, 409);
         }
-        console.error(`[${request.method} /api/finance/transactions]`, error);
+        const conflict = financeConcurrencyError(error);
+        if (conflict) {
+            console.warn(`[${request.method} /api/finance/transactions]`, financeMutationDiagnostics(error));
+            return jsonNoStore(conflict, 409);
+        }
+        console.error(`[${request.method} /api/finance/transactions]`, financeMutationDiagnostics(error));
         return jsonNoStore({ error: "INTERNAL_SERVER_ERROR", message: "Unable to update your transactions." }, 500);
     }
 }
