@@ -13,6 +13,7 @@ import { monthlyActivityComparison, overallPositionComparison } from "../../util
 import { CategoryBreakdownChart } from "./category-breakdown-chart";
 import { FinanceCharts } from "./finance-charts";
 import { FinanceOverviewSkeleton } from "./finance-overview-skeleton";
+import { FinanceRefreshNotice } from "../finance-refresh-notice";
 import { FinanceComparison } from "./finance-comparison";
 import { FinanceManager, type ManagerKind } from "./finance-manager";
 import { ManageFinancesDialog, type FinanceSection } from "./manage-finances-dialog";
@@ -30,7 +31,12 @@ import {
 } from "lucide-react";
 
 export function FinanceOverview() {
-    const { data, ready, loadError, retry } = useFinance();
+    const { userId } = useFinance();
+    return <FinanceOverviewContent key={userId ?? "signed-out"} />;
+}
+
+function FinanceOverviewContent() {
+    const { data, ready, loadError, refreshError, refreshing, retry } = useFinance();
     const [manager, setManager] = useState<ManagerKind | null>(null);
     const [manageOpen, setManageOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<FinanceSection>("account");
@@ -202,6 +208,11 @@ export function FinanceOverview() {
                 loadError ? <LoadError message={loadError} onRetry={retry} /> : <FinanceOverviewSkeleton />
             ) : (
                 <>
+                    <FinanceRefreshNotice
+                        message={refreshError}
+                        refreshing={refreshing}
+                        onRetry={retry}
+                    />
                     <section className="space-y-3" aria-labelledby="snapshot-title">
                         <div className="flex justify-between items-center gap-4">
                             <div>
@@ -332,7 +343,7 @@ export function FinanceOverview() {
                 </>
             )}
             <ManageFinancesDialog
-                open={manageOpen}
+                open={ready && manageOpen}
                 activeTab={activeTab}
                 error={error}
                 onOpenChange={(open) => {
@@ -347,7 +358,7 @@ export function FinanceOverview() {
                 onEdit={(tab, id) => open(tab, id)}
                 onDelete={(tab, id, name) => setTarget({ kind: tab, id, name })}
             />
-            {manager && (
+            {ready && manager && (
                 <FinanceManager
                     key={`${manager}-${editId || "new"}`}
                     kind={manager}
@@ -356,14 +367,14 @@ export function FinanceOverview() {
                 />
             )}
             <NetWorthBreakdownDialog
-                open={breakdownOpen}
+                open={ready && breakdownOpen}
                 onOpenChange={setBreakdownOpen}
                 bank={snapshot.bank}
                 investments={snapshot.investments}
                 debt={snapshot.debt}
                 netWorth={snapshot.netWorth}
             />
-            <DeleteModal open={target !== null} onOpenChange={(value) => {
+            <DeleteModal open={ready && target !== null} onOpenChange={(value) => {
                 if (!value && !deletion.isPending()) setTarget(null);
             }}
                 title={`Delete ${target?.name || "item"}?`}

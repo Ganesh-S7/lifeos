@@ -15,6 +15,8 @@ import { useFinanceMutation } from "@/features/finance/hooks/use-finance-mutatio
 import type { FinanceMutationCallback } from "@/features/finance/utils/finance-mutation";
 import { notify } from "@/lib/notifications";
 
+import { FinanceRefreshNotice } from "@/features/finance/components/finance-refresh-notice";
+import { expenseToTransaction, transactionsToExpenses } from "@/features/finance/utils/expense-transactions";
 import type { Expense } from "@/features/finance/types/expense";
 import type { ExpenseFormValues } from "@/features/finance/schemas/expense-schema";
 import { formatDateValue } from "@/lib/utils/date";
@@ -33,20 +35,15 @@ const categories = [
 ];
 
 export default function ExpensesPage() {
-    const { data, ready, loadError, retry } = useFinance();
+    const { userId } = useFinance();
+    return <ExpensesPageContent key={userId ?? "signed-out"} />;
+}
+
+function ExpensesPageContent() {
+    const { data, ready, loadError, refreshError, refreshing, retry } = useFinance();
     const [error, setError] = useState("");
     const deletion = useFinanceMutation();
-    const expenses: Expense[] = data.transactions
-        .filter((transaction) => transaction.type === "expense")
-        .map((transaction) => ({
-            id: transaction.id,
-            merchant: transaction.description,
-            category: transaction.category || "Other",
-            account: transaction.accountId || "",
-            amount: transaction.amount,
-            date: transaction.date,
-            note: transaction.note,
-        }));
+    const expenses = transactionsToExpenses(data.transactions);
     const [date, setDate] = useState<Date | null>(null);
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
 
@@ -60,16 +57,17 @@ export default function ExpensesPage() {
 
     const handleSaveExpense: FinanceMutationCallback<ExpenseFormValues> = async (data) => {
         try {
-            await financeActions.saveTransaction({
-                id: editingExpense?.id,
-                type: "expense",
-                amount: data.amount,
-                description: data.merchant,
-                category: data.category,
-                accountId: data.account,
-                date: formatDateValue(data.date),
-                note: data.note || undefined,
-            });
+            await financeActions.saveTransaction(
+                expenseToTransaction({
+                    id: editingExpense?.id,
+                    amount: data.amount,
+                    merchant: data.merchant,
+                    category: data.category,
+                    account: data.account,
+                    date: formatDateValue(data.date),
+                    note: data.note || undefined,
+                }),
+            );
             setError("");
             notify.success(editingExpense ? "Expense updated." : "Expense saved.");
             return true;
@@ -176,6 +174,11 @@ export default function ExpensesPage() {
                 loadError ? <LoadError message={loadError} onRetry={retry} /> : <ExpensesSkeleton />
             ) : (
                 <>
+                    <FinanceRefreshNotice
+                        message={refreshError}
+                        refreshing={refreshing}
+                        onRetry={retry}
+                    />
                     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
                     {data.accounts.length === 0 && (
                         <p className="rounded-xl border border-border bg-surface p-4 text-sm text-text-secondary">
@@ -226,7 +229,7 @@ export default function ExpensesPage() {
                 </>
             )}
             <AddExpenseDialog
-                open={addExpenseOpen}
+                open={ready && addExpenseOpen}
                 onOpenChange={(open) => {
                     setAddExpenseOpen(open);
 
@@ -240,7 +243,7 @@ export default function ExpensesPage() {
                 onSubmit={handleSaveExpense}
             />
             <DeleteModal
-                open={expenseToDelete !== null}
+                open={ready && expenseToDelete !== null}
                 onOpenChange={(open) => {
                     if (!open && !deletion.isPending()) {
                         setExpenseToDelete(null);
