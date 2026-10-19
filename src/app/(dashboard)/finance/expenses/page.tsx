@@ -125,8 +125,7 @@ function ExpensesPageContent() {
                 return [
                     expense.merchant,
                     expense.category,
-                    data.accounts.find((account) => account.id === expense.account)?.name ||
-                    data.transactions.find((transaction) => transaction.id === expense.id)?.demoAccount || "",
+                    data.accounts.find((account) => account.id === expense.account)?.name || "",
                     expense.note ?? "",
                 ].some((value) =>
                     value.toLowerCase().includes(normalizedSearch),
@@ -162,7 +161,7 @@ function ExpensesPageContent() {
                         return b.date.localeCompare(a.date);
                 }
             });
-    }, [expenses, data.accounts, data.transactions, search, category, date, sort]);
+    }, [expenses, data.accounts, search, category, date, sort]);
 
     return (
         <div className="space-y-6">
@@ -220,7 +219,7 @@ function ExpensesPageContent() {
                         expenses={filteredExpenses.map((expense) => ({
                             ...expense,
                             account: data.accounts.find((account) => account.id === expense.account)?.name ||
-                                data.transactions.find((transaction) => transaction.id === expense.id)?.demoAccount || "Historical",
+                                "Account unavailable",
                         }))}
                         onEdit={handleEditExpense}
                         onDelete={setExpenseToDelete}

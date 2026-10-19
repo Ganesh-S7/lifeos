@@ -94,6 +94,8 @@ test("initialization populates all five collections and deduplicates concurrent 
 
 test("empty API data remains genuinely empty with no baseline or demo data", async () => {
     const { store } = fixture();
+    assert.deepEqual(store.getSnapshot().data, emptyFinanceData());
+    assert.equal(store.getSnapshot().ready, false);
     await store.setSession("user");
     assert.deepEqual(store.getSnapshot().data, emptyFinanceData());
     assert.equal(store.getSnapshot().ready, true);
@@ -329,5 +331,36 @@ test("Finance runtime has no storage, demo seed, or locally fabricated history d
     for (const file of ["finance-store.ts", "finance-store-core.ts"]) {
         const source = readFileSync(new URL(`../src/features/finance/store/${file}`, import.meta.url), "utf8");
         assert.doesNotMatch(source, /localStorage|lifeos-finance-v1|mock-expenses|randomUUID|financialSnapshot/);
+    }
+});
+
+test("initialization, retry and CRUD never access legacy browser storage", async () => {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+    let storageAccesses = 0;
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            get localStorage() {
+                storageAccesses++;
+                throw new Error("Legacy storage must not be accessed");
+            },
+            get sessionStorage() {
+                storageAccesses++;
+                throw new Error("Browser storage must not be accessed");
+            },
+        },
+    });
+    try {
+        const { store } = fixture();
+        await store.setSession("user");
+        assert.deepEqual(store.getSnapshot().data, emptyFinanceData());
+        await store.retry();
+        await store.actions.saveAccount({ name: "My account", balance: 10 });
+        await store.actions.deleteAccount("accounts-new");
+        await store.setSession(null);
+        assert.equal(storageAccesses, 0);
+    } finally {
+        if (previous) Object.defineProperty(globalThis, "window", previous);
+        else delete globalThis.window;
     }
 });

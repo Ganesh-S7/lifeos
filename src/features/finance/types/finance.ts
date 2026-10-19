@@ -46,8 +46,6 @@ export interface FinanceTransaction {
     destinationAccountId?: string;
     investmentId?: string;
     note?: string;
-    /** Legacy sample expenses are deliberately outside the bank ledger. */
-    demoAccount?: string;
 }
 
 export interface FinanceData {
@@ -55,7 +53,7 @@ export interface FinanceData {
     investments: Investment[];
     liabilities: Liability[];
     transactions: FinanceTransaction[];
-    /** Actual positions captured when the local finance data changed. */
+    /** Persisted positions returned by the authenticated Finance API. */
     positionHistory?: FinancialPositionSnapshot[];
 }
 

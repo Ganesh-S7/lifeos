@@ -27,10 +27,10 @@ export type BankAccountDto = BankAccount;
 export type InvestmentDto = Investment;
 export type LiabilityDto = Liability;
 
-/** Every database transaction has an account; demo records are not API records. */
+/** Every database transaction has an account and type-specific relationships. */
 export type FinanceTransactionDto = Omit<
     FinanceTransaction,
-    "demoAccount" | "accountId" | "destinationAccountId" | "investmentId" | "category" | "type"
+    "accountId" | "destinationAccountId" | "investmentId" | "category" | "type"
 > & FinanceTransactionRequest;
 
 export interface FinancialPositionSnapshotDto extends FinancialPositionSnapshot {

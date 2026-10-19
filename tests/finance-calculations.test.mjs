@@ -58,10 +58,10 @@ test("editing, deletion and fresh snapshots do not double count old entries", ()
     assert.equal(accountBalance(bank, [{ ...expense, amount: 200 }]), 4800);
     assert.equal(accountBalance(bank, []), 5000);
     assert.equal(accountBalance({ ...bank, balanceSnapshot: 7000, balanceSnapshotAt: "2026-10-12T00:00:00.000Z" }, [expense]), 7000);
-    const demo = transaction("demo", "expense", 400, {
-        recordedAt: "2026-09-01T00:00:00.000Z", demoAccount: "Old account",
+    const historical = transaction("historical", "expense", 400, {
+        recordedAt: "2026-09-01T00:00:00.000Z",
     });
-    assert.equal(accountBalance(bank, [demo]), 5000);
+    assert.equal(accountBalance(bank, [historical]), 5000);
 });
 
 test("net worth and zero income are derived safely", () => {

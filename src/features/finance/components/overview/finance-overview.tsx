@@ -8,7 +8,8 @@ import { notify } from "@/lib/notifications";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateDisplay, formatDateValue } from "@/lib/utils/date";
 import { financeActions, useFinance } from "../../store/finance-store";
-import { categorySpending, financialSnapshot, monthlyActivity } from "../../utils/finance-calculations";
+import { categorySpending, financialSnapshot } from "../../utils/finance-calculations";
+import { buildFinanceChartData } from "../../utils/finance-chart-data";
 import { monthlyActivityComparison, overallPositionComparison } from "../../utils/finance-comparisons";
 import { CategoryBreakdownChart } from "./category-breakdown-chart";
 import { FinanceCharts } from "./finance-charts";
@@ -49,28 +50,12 @@ function FinanceOverviewContent() {
     const month = formatDateValue(now).slice(0, 7);
     const snapshot = financialSnapshot(data);
     const positionComparisons = overallPositionComparison(snapshot, data.positionHistory, now);
-    const hasSnapshot = data.accounts.length + data.investments.length + data.liabilities.length > 0;
     const activityComparisons = monthlyActivityComparison(data.transactions, now);
     const activity = activityComparisons.current;
     const categories = categorySpending(data.transactions, month);
     const recent = [...data.transactions].sort((a, b) =>
         b.date.localeCompare(a.date) || b.recordedAt.localeCompare(a.recordedAt)).slice(0, 5);
-    const chartData = Array.from({ length: 6 }, (_, index) => {
-        const date = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
-        const key = formatDateValue(date).slice(0, 7);
-        const hasRecords = data.transactions.some((item) => item.date.startsWith(key));
-        const values = monthlyActivity(data.transactions, key);
-        const sample = index < 5 && !hasRecords;
-        return {
-            month: date.toLocaleDateString("en-IN", { month: "short" }),
-            income: index === 5 ? activity.income
-                : sample ? [32000, 37000, 34000, 39000, 36000][index] : values.income,
-            expenses: index === 5 ? activity.expenses
-                : sample ? [22000, 26000, 24000, 28000, 25000][index] : values.expenses,
-            netWorth: index === 5 ? snapshot.netWorth : hasSnapshot
-                ? snapshot.netWorth - (5 - index) * 2500 : 0,
-        };
-    });
+    const chartData = buildFinanceChartData(data, now);
 
     function open(kind: ManagerKind, id?: string) {
         setEditId(id);
@@ -313,7 +298,7 @@ function FinanceOverviewContent() {
                             ))}
                         </div>
                     </section>
-                    <FinanceCharts data={chartData} hasSnapshot={hasSnapshot} />
+                    <FinanceCharts data={chartData} />
                     <CategoryBreakdownChart data={categories} />
                     <section className="rounded-2xl border border-border bg-surface p-5">
                         <div className="flex items-center justify-between">
@@ -327,7 +312,6 @@ function FinanceOverviewContent() {
                                     <div>
                                         <p className="text-sm font-medium text-text-primary">{item.description}</p>
                                         <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")} · {formatDateDisplay(item.date)}</p>
-                                        {item.demoAccount && <p className="text-xs text-text-muted">Demo record</p>}
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-sm font-semibold text-text-primary">
