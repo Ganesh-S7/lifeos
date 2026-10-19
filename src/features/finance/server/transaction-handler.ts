@@ -50,13 +50,6 @@ export async function handleTransactionMutation(
             }, 400);
         }
         const input = parsed.data;
-        if (input.type !== "income" && input.type !== "expense" && input.type !== "transfer") {
-            // Keep the shared five-type contract intact while limiting this API's scope.
-            return jsonNoStore({
-                error: "UNSUPPORTED_TRANSACTION_TYPE",
-                message: "Only income, expense, and transfer transactions can be managed here.",
-            }, 400);
-        }
         const result = await mutateTransaction(
             prisma,
             session.user.id,

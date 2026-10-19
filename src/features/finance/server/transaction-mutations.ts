@@ -4,13 +4,15 @@ import { financeDateToDatabase, toFinanceTransactionDto } from "./finance-dto";
 import { validateFinanceLedger } from "./finance-ledger";
 import { writeFinancialPosition } from "./finance-position";
 
-export type SupportedTransactionRequest = Extract<
-    FinanceTransactionRequest,
-    { type: "income" | "expense" | "transfer" }
->;
+export type SupportedTransactionRequest = FinanceTransactionRequest;
 
 export function isSupportedTransactionType(type: string): type is SupportedTransactionRequest["type"] {
-    return type === "income" || type === "expense" || type === "transfer";
+    return type === "income" || type === "expense" || type === "transfer" ||
+        type === "investment_purchase" || type === "investment_sale";
+}
+
+function isInvestmentTrade(type: string) {
+    return type === "investment_purchase" || type === "investment_sale";
 }
 
 export class TransactionMutationError extends Error {
@@ -47,7 +49,7 @@ export async function mutateTransaction(
         if ((existing && !isSupportedTransactionType(existing.type)) ||
             (mutation.kind !== "delete" && !isSupportedTransactionType(mutation.input.type))) {
             throw new TransactionMutationError("UNSUPPORTED_TRANSACTION_TYPE", 400,
-                "Only income, expense, and transfer transactions can be managed here.");
+                "This transaction type is not supported.");
         }
         if (existing && mutation.kind === "update" && existing.type !== mutation.input.type) {
             throw new TransactionMutationError("TRANSACTION_TYPE_CHANGE_NOT_SUPPORTED", 400,
@@ -77,6 +79,24 @@ export async function mutateTransaction(
             }
         }
 
+        if (existing && isInvestmentTrade(existing.type) && !existing.investmentId) {
+            throw new TransactionMutationError("INVALID_INVESTMENT", 400,
+                "Select a tracked investment belonging to your account.");
+        }
+        const investmentIds = new Set([
+            ...(existing && isInvestmentTrade(existing.type) && existing.investmentId
+                ? [existing.investmentId] : []),
+            ...(mutation.kind !== "delete" && "investmentId" in mutation.input
+                ? [mutation.input.investmentId] : []),
+        ]);
+        for (const id of investmentIds) {
+            const investment = await transaction.investment.findFirst({ where: { id, userId } });
+            if (!investment) {
+                throw new TransactionMutationError("INVALID_INVESTMENT", 400,
+                    "Select a tracked investment belonging to your account.");
+            }
+        }
+
         let saved;
         if (mutation.kind === "delete") {
             const result = await transaction.financeTransaction.deleteMany({
@@ -90,11 +110,11 @@ export async function mutateTransaction(
                 description: mutation.input.description,
                 date: financeDateToDatabase(mutation.input.date),
                 accountId: mutation.input.accountId,
-                category: mutation.input.type === "transfer" ? null : mutation.input.category ?? null,
+                category: "category" in mutation.input ? mutation.input.category ?? null : null,
                 note: mutation.input.note ?? null,
                 destinationAccountId: mutation.input.type === "transfer"
                     ? mutation.input.destinationAccountId : null,
-                investmentId: null,
+                investmentId: "investmentId" in mutation.input ? mutation.input.investmentId : null,
             };
             if (mutation.kind === "create") {
                 // The database's server default assigns recordedAt and the ID.

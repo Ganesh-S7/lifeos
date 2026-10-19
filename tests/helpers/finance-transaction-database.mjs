@@ -77,6 +77,11 @@ export function database(initial = records(), settings = {}) {
                     assert.equal(query.where.userId, userId);
                     return staged.accounts.find((row) => matches(row, query.where)) ?? null;
                 };
+                tx.investment.findFirst = async (query) => {
+                    log("investment.findFirst", query);
+                    assert.equal(query.where.userId, userId);
+                    return staged.investments.find((row) => matches(row, query.where)) ?? null;
+                };
                 Object.assign(tx.financeTransaction, {
                     async findFirst(query) {
                         log("financeTransaction.findFirst", query);

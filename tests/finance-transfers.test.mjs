@@ -339,17 +339,15 @@ test("type changes involving transfers and ordinary transactions remain rejected
     }
 });
 
-test("investment trade writes remain rejected on transfer paths", async () => {
+test("investment trades cannot replace existing transfers", async () => {
     for (const type of ["investment_purchase", "investment_sale"]) {
         const original = transferRecords(true);
         const db = setup(original);
         const input = { type, amount: 10, description: "Trade", date: "2026-10-01", accountId: "bank", investmentId: "holding" };
-        for (const method of ["POST", "PUT"]) {
-            const result = await request(method, input);
-            assert.equal(result.status, 400);
-            assert.equal(result.body.error, "UNSUPPORTED_TRANSACTION_TYPE");
-        }
-        assert.equal(db.options.length, 0);
+        const result = await request("PUT", input);
+        assert.equal(result.status, 400);
+        assert.equal(result.body.error, "TRANSACTION_TYPE_CHANGE_NOT_SUPPORTED");
+        assert.equal(db.options.length, 1);
         assertUnchanged(db, original);
     }
 });
