@@ -1,8 +1,8 @@
-# Finance income and expense mutations — Task 7
+# Finance income, expense, and transfer mutations — Tasks 7–8
 
 Backend-only transaction CRUD. The UI, custom local store, localStorage,
 authentication configuration, and Prisma schema are unchanged. No browser data
-is read/imported/seeded, and no transfer or investment-trade writes are exposed.
+is read/imported/seeded. Investment-trade writes remain unsupported.
 
 ## Contracts
 
@@ -13,10 +13,11 @@ is read/imported/seeded, and no transfer or investment-trade writes are exposed.
 | `DELETE /api/finance/transactions/[id]` | `200 { success: true }` |
 
 POST and full-replacement PUT reuse `financeTransactionRequestSchema`, then
-explicitly limit the accepted types to `income` and `expense`. Both require
+explicitly limit the accepted types to `income`, `expense`, and `transfer`. All require
 positive numeric `amount`, non-empty `description`, valid calendar `date` in
 `YYYY-MM-DD`, and an `accountId`. Expenses require `category`; income permits an
-optional category. Optional category/note inputs follow existing trimming and
+optional category. Transfers require a different `destinationAccountId` and reject
+category and investment references, including null properties. Optional category/note inputs follow existing trimming and
 null/omission normalization. Full replacement clears absent optional values to
 database null. Unknown fields, IDs, ownership, recording/creation timestamps,
 demo fields, and irrelevant relationship fields are rejected. Existing money
@@ -25,7 +26,8 @@ precision/range and MySQL date-range guards remain unchanged.
 PUT keeps the original transaction type. The current Expenses editor always
 submits `expense`, while the general transaction editor's type selector does not
 offer expense; there is no existing income-to-expense or expense-to-income edit
-flow. Transfers/trades cannot be created here, converted into ordinary entries,
+flow. Transfers may be edited only as transfers. Income/expense entries cannot
+become transfers, or vice versa. Investment trades cannot be created, converted,
 updated, or deleted, even if such records already exist in the database.
 
 ## Ownership and responses
@@ -33,7 +35,8 @@ updated, or deleted, even if such records already exist in the database.
 Better Auth receives request headers. Only the session's user ID is used. Existing
 transaction lookups, updates, and deletions include both ID and user ID. Missing
 and foreign transactions produce identical 404s. Both the original and replacement
-source accounts are checked for session ownership; missing and foreign accounts
+source accounts, and transfers' original and replacement destination accounts,
+are checked for session ownership; missing and foreign accounts
 receive the same validation response without exposing another user's data.
 
 All routes use Node.js, dynamic evaluation, and `Cache-Control: private, no-store`.
@@ -42,8 +45,8 @@ The existing `GET /api/finance` remains the transaction read path.
 | Status | Error code | Meaning |
 | --- | --- | --- |
 | 400 | `INVALID_INPUT` | Invalid JSON/body/ID; flattened Zod details included |
-| 400 | `INVALID_ACCOUNT` | Source account missing or not owned by the session user |
-| 400 | `UNSUPPORTED_TRANSACTION_TYPE` | Transfers and investment trades are outside this task |
+| 400 | `INVALID_ACCOUNT` | Referenced account missing/not owned, or invalid persisted transfer account pair |
+| 400 | `UNSUPPORTED_TRANSACTION_TYPE` | Investment trade writes remain unsupported |
 | 400 | `TRANSACTION_TYPE_CHANGE_NOT_SUPPORTED` | Editing must retain the original type |
 | 401 | `UNAUTHORIZED` | Sign-in required |
 | 404 | `NOT_FOUND` | Transaction not found for this user |
@@ -77,6 +80,44 @@ Failure at any stage rolls back staged changes. Rejected mutations do not write
 history. Successful operations append exactly one resulting financial position.
 No automatic retries are added for deadlocks or timeouts.
 
+### Transfer writes
+
+A transfer uses the existing endpoints and creates exactly one transaction row,
+with its source in `accountId` and destination in `destinationAccountId`. ID and
+`recordedAt` retain the server database defaults. Account balance snapshots are
+never updated to reflect transfers. The shared ledger subtracts from the source
+and adds to the destination, applying each account's independent strict snapshot
+cutoff. When both effects apply, the transfer conserves combined bank assets.
+When one effect is already included in a newer snapshot, it is not replayed.
+
+Example request:
+
+```json
+{
+  "type": "transfer",
+  "accountId": "source-id",
+  "destinationAccountId": "destination-id",
+  "amount": 100,
+  "description": "Move to savings",
+  "date": "2026-10-01",
+  "note": "Optional note"
+}
+```
+
+Notes follow the existing optional/null/trim contract; PUT clears omitted notes.
+Transfers never contribute to ordinary monthly income, expenses, cash flow,
+savings rate, or category spending. Existing calculation helpers remain unchanged.
+
+For PUT, the service validates ownership of all old and replacement source and
+destination accounts, retains ID/userId/recordedAt, and applies the proposed
+replacement ledger. It can change amount, date, description, note, and either
+account while keeping type `transfer`. Deletion removes only the transfer row.
+Both operations validate the resulting full running ledger before committing:
+reducing, redirecting, or removing funds already spent by the original destination
+can fail with `409 NEGATIVE_BALANCE`. Order-sensitive equal recording times retain
+the existing `409 AMBIGUOUS_LEDGER_ORDER` response. All failures roll back the
+mutation and append no position history.
+
 `finance-ledger.ts` extracts the existing exact-cent conversion and per-transaction
 effects from `finance-position.ts`. Both the unchanged position-writing workflow
 and the new validator use these same effects, including existing transfers and
@@ -107,7 +148,8 @@ with a balance snapshot itself remains excluded, exactly as before.
 
 ## Verification and limits
 
-Run `node --test tests/finance-transactions.test.mjs`. Tests use actual handlers,
+Run `node --test tests/finance-transactions.test.mjs tests/finance-transfers.test.mjs`.
+Tests use actual handlers,
 schemas, serializers, mutation service, shared ledger helpers, and position writer.
 Auth and Prisma are replaced with existing-style test doubles. The in-memory
 Prisma helper stages writes and publishes only a successful transaction callback.
@@ -118,10 +160,15 @@ strict validation, optional fields, date-only conversion, recording-time retenti
 negative running balances, account moves, historical and equal-time cutoffs,
 ambiguous ties, failure orchestration, existing transfers/trades, debt totals, and
 comparison with the local store's prefix rules for distinct recording times.
+Transfer tests additionally cover both account references, old/replacement
+ownership, exact debits/credits, conserved total assets, cash-flow exclusion,
+account moves, funding-dependent deletions, independent snapshot cutoffs, ambiguous
+ties, and mutation/history failure orchestration. They use the same staged Prisma
+double; none establish actual concurrent MySQL behavior.
 No real database records or Better Auth sessions were accessed.
 
 Live database concurrency/rollback checks remain unverified. The full ledger is
 read for validation and again by the existing position writer; optimizing large
-ledgers is a later task. Transfers, investment trade writes, and frontend
+ledgers is a later task. Investment trade writes and frontend
 integration remain unimplemented here. The local store retains its current
 behavior, including browser-only demo history.

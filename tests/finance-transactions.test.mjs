@@ -155,9 +155,9 @@ test("strict contracts reject invalid amounts, dates, accounts, fields and recor
     }
 });
 
-test("unsupported transfers/trades cannot be created, edited, deleted, or converted", async () => {
-    for (const type of ["transfer", "investment_purchase", "investment_sale"]) {
-        const body = { ...income, type, ...(type === "transfer" ? { destinationAccountId: "other" } : { investmentId: "holding" }) };
+test("unsupported investment trades cannot be created, edited, deleted, or converted", async () => {
+    for (const type of ["investment_purchase", "investment_sale"]) {
+        const body = { ...income, type, investmentId: "holding" };
         for (const method of ["POST", "PUT"]) {
             const db = setup();
             const result = await request(method, body);

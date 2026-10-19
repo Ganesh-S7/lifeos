@@ -4,10 +4,13 @@ import { financeDateToDatabase, toFinanceTransactionDto } from "./finance-dto";
 import { validateFinanceLedger } from "./finance-ledger";
 import { writeFinancialPosition } from "./finance-position";
 
-export type OrdinaryTransactionRequest = Extract<FinanceTransactionRequest, { type: "income" | "expense" }>;
+export type SupportedTransactionRequest = Extract<
+    FinanceTransactionRequest,
+    { type: "income" | "expense" | "transfer" }
+>;
 
-export function isOrdinaryTransaction(type: string): type is "income" | "expense" {
-    return type === "income" || type === "expense";
+export function isSupportedTransactionType(type: string): type is SupportedTransactionRequest["type"] {
+    return type === "income" || type === "expense" || type === "transfer";
 }
 
 export class TransactionMutationError extends Error {
@@ -22,8 +25,8 @@ export class TransactionMutationError extends Error {
 }
 
 type TransactionMutation =
-    | { kind: "create"; input: OrdinaryTransactionRequest }
-    | { kind: "update"; id: string; input: OrdinaryTransactionRequest }
+    | { kind: "create"; input: SupportedTransactionRequest }
+    | { kind: "update"; id: string; input: SupportedTransactionRequest }
     | { kind: "delete"; id: string };
 
 function notFound() {
@@ -41,19 +44,30 @@ export async function mutateTransaction(
         const existing = mutation.kind === "create" ? null
             : await transaction.financeTransaction.findFirst({ where: { id: mutation.id, userId } });
         if (mutation.kind !== "create" && !existing) throw notFound();
-        if ((existing && !isOrdinaryTransaction(existing.type)) ||
-            (mutation.kind !== "delete" && !isOrdinaryTransaction(mutation.input.type))) {
+        if ((existing && !isSupportedTransactionType(existing.type)) ||
+            (mutation.kind !== "delete" && !isSupportedTransactionType(mutation.input.type))) {
             throw new TransactionMutationError("UNSUPPORTED_TRANSACTION_TYPE", 400,
-                "Only income and expense transactions can be managed here.");
+                "Only income, expense, and transfer transactions can be managed here.");
         }
         if (existing && mutation.kind === "update" && existing.type !== mutation.input.type) {
             throw new TransactionMutationError("TRANSACTION_TYPE_CHANGE_NOT_SUPPORTED", 400,
-                "Keep the original transaction type when editing income or expenses.");
+                "Keep the original transaction type when editing transactions.");
         }
 
+        if ((existing?.type === "transfer" &&
+            (!existing.destinationAccountId || existing.accountId === existing.destinationAccountId)) ||
+            (mutation.kind !== "delete" && mutation.input.type === "transfer" &&
+                mutation.input.accountId === mutation.input.destinationAccountId)) {
+            throw new TransactionMutationError("INVALID_ACCOUNT", 400,
+                "Choose different source and destination bank accounts.");
+        }
         const accountIds = new Set([
             ...(existing ? [existing.accountId] : []),
+            ...(existing?.type === "transfer" && existing.destinationAccountId
+                ? [existing.destinationAccountId] : []),
             ...(mutation.kind !== "delete" ? [mutation.input.accountId] : []),
+            ...(mutation.kind !== "delete" && mutation.input.type === "transfer"
+                ? [mutation.input.destinationAccountId] : []),
         ]);
         for (const id of accountIds) {
             const account = await transaction.bankAccount.findFirst({ where: { id, userId } });
@@ -76,9 +90,10 @@ export async function mutateTransaction(
                 description: mutation.input.description,
                 date: financeDateToDatabase(mutation.input.date),
                 accountId: mutation.input.accountId,
-                category: mutation.input.category ?? null,
+                category: mutation.input.type === "transfer" ? null : mutation.input.category ?? null,
                 note: mutation.input.note ?? null,
-                destinationAccountId: null,
+                destinationAccountId: mutation.input.type === "transfer"
+                    ? mutation.input.destinationAccountId : null,
                 investmentId: null,
             };
             if (mutation.kind === "create") {
