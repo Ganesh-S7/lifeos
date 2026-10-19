@@ -8,6 +8,9 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
+    ListSkeleton,
+    LoadError,
+    SkeletonRegion,
 } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils/currency";
 import { useFinance } from "../../store/finance-store";
@@ -26,7 +29,7 @@ interface ManageFinancesDialogProps {
     onDelete: (tab: FinanceSection, id: string, name: string) => void;
 }
 
-const sections: { id: FinanceSection; label: string; addLabel: string; empty: string }[] = [
+const sections: { id: FinanceSection; label: string; addLabel: string; empty: string; }[] = [
     {
         id: "account",
         label: "Bank accounts",
@@ -57,7 +60,7 @@ export function ManageFinancesDialog({
     onEdit,
     onDelete,
 }: ManageFinancesDialogProps) {
-    const { data } = useFinance();
+    const { data, ready, loadError, retry } = useFinance();
     const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const section = sections.find((item) => item.id === activeTab) ?? sections[0];
     const items = activeTab === "account" ? data.accounts
@@ -149,7 +152,7 @@ export function ManageFinancesDialog({
                                 {items.length} {items.length === 1 ? "record" : "records"}
                             </p>
                         </div>
-                        <Button size="sm" onClick={() => onAdd(activeTab)}>
+                        <Button size="sm" disabled={!ready} onClick={() => onAdd(activeTab)}>
                             + {section.addLabel}
                         </Button>
                     </div>
@@ -160,7 +163,13 @@ export function ManageFinancesDialog({
                         </p>
                     )}
 
-                    {items.length === 0 ? (
+                    {!ready ? (
+                        loadError ? <LoadError message={loadError} onRetry={retry} /> : (
+                            <SkeletonRegion label={`Loading ${section.label.toLowerCase()}`}>
+                                <ListSkeleton rows={3} />
+                            </SkeletonRegion>
+                        )
+                    ) : items.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border bg-surface-subtle px-5 py-10 text-center">
                             <p className="text-sm text-text-secondary">
                                 {section.empty}

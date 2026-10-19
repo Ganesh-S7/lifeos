@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { notify } from "@/lib/notifications";
 
 import {
     Button,
@@ -279,8 +280,15 @@ export function FinanceManager({
                 });
             }
 
+            const label = kind === "account" ? "Bank account"
+                : kind === "investment" ? "Investment"
+                    : kind === "liability" ? "Liability" : "Transaction";
+            notify.success(`${label} ${editId ? "updated" : "saved"}.`);
             onClose();
         } catch (cause) {
+            notify.error(`Unable to save this ${title}.`, {
+                description: "Review the form and try again. Your changes have not been saved.",
+            });
             setError(
                 cause instanceof Error
                     ? cause.message

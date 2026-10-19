@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { authClient } from "@/lib/auth-client";
+import { Skeleton } from "@/components/ui";
 
 const navigation = [
     {
@@ -60,8 +61,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     const { data: session, isPending } = authClient.useSession();
 
     const userName =
-        session?.user.name?.trim() ||
-        (isPending ? "Loading account..." : "Personal account");
+        session?.user.name?.trim() || "Personal account";
+    const initialSessionLoading = isPending && !session;
 
     const firstName = userName.split(/\s+/)[0];
 
@@ -120,6 +121,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <div className="px-3 pt-5">
                     <button
                         type="button"
+                        disabled={initialSessionLoading}
                         className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left transition-colors hover:bg-surface-elevated"
                     >
                         <div className="flex min-w-0 items-center gap-2.5">
@@ -128,9 +130,16 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                             </div>
 
                             <div className="min-w-0">
-                                <p className="truncate text-xs font-medium text-text-primary">
-                                    {isPending ? "Loading workspace..." : `${firstName}'s Life`}
-                                </p>
+                                {initialSessionLoading ? (
+                                    <>
+                                        <Skeleton variant="text" className="w-24" />
+                                        <span className="sr-only">Loading workspace</span>
+                                    </>
+                                ) : (
+                                    <p className="truncate text-xs font-medium text-text-primary">
+                                        {firstName}&apos;s Life
+                                    </p>
+                                )}
 
                                 <p className="truncate text-[10px] text-text-muted">
                                     Personal workspace
@@ -218,9 +227,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     </div>
 
                     <div className="min-w-0">
-                        <p className="truncate text-xs font-medium text-text-primary">
-                            {userName}
-                        </p>
+                        {initialSessionLoading ? (
+                            <Skeleton variant="text" className="w-24" />
+                        ) : (
+                            <p className="truncate text-xs font-medium text-text-primary">
+                                {userName}
+                            </p>
+                        )}
 
                         <p className="truncate text-[10px] text-text-muted">
                             {session?.user.email ?? "Personal account"}

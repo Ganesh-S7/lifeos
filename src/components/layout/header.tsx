@@ -7,7 +7,7 @@ import {
   Search,
   Sun,
 } from "lucide-react";
-import { IconButton } from "@/components/ui";
+import { IconButton, Skeleton } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,8 +25,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [signOutError, setSignOutError] = useState("");
 
   const userName =
-    session?.user.name?.trim() ||
-    (isPending ? "Loading account..." : "Personal account");
+    session?.user.name?.trim() || "Personal account";
+  const initialSessionLoading = isPending && !session;
 
   const initials =
     userName
@@ -129,14 +129,25 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           {/* Authenticated user */}
           <div className="ml-1 flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-              {initials}
-            </span>
+            {initialSessionLoading ? (
+              <>
+                <Skeleton variant="circle" className="size-8 shrink-0" />
+                <span className="sr-only">Loading account</span>
+              </>
+            ) : (
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                {initials}
+              </span>
+            )}
 
             <div className="hidden min-w-0 text-left xl:block">
-              <p className="max-w-36 truncate text-[11px] font-medium text-text-primary">
-                {userName}
-              </p>
+              {initialSessionLoading ? (
+                <Skeleton variant="text" className="w-24" />
+              ) : (
+                <p className="max-w-36 truncate text-[11px] font-medium text-text-primary">
+                  {userName}
+                </p>
+              )}
 
               <p className="max-w-36 truncate text-[10px] text-text-muted">
                 Personal account

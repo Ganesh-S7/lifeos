@@ -28,6 +28,7 @@ import {
 
 import { healthActions } from "../store/health-actions";
 import { useHealthStore } from "../store/health-store";
+import { notify } from "@/lib/notifications";
 
 import type { HealthLog } from "../types/health";
 
@@ -278,8 +279,16 @@ export function HealthLogDialog({
                 id: storedLogForDate?.id ?? editLog?.id,
             });
 
+            notify.success(
+                storedLogForDate || editLog
+                    ? "Health log updated."
+                    : "Health log saved.",
+            );
             handleDialogOpenChange(false);
         } catch (cause) {
+            notify.error("Unable to save your health log.", {
+                description: "Review the form and try again. Your changes have not been saved.",
+            });
             setError("root.server", {
                 type: "server",
                 message:
@@ -293,7 +302,9 @@ export function HealthLogDialog({
     return (
         <Dialog
             open={open}
-            onOpenChange={handleDialogOpenChange}
+            onOpenChange={(nextOpen) => {
+                if (!isSubmitting) handleDialogOpenChange(nextOpen);
+            }}
         >
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
                 <DialogHeader>
@@ -357,8 +368,8 @@ export function HealthLogDialog({
                             aria-controls="health-body-panel"
                             onClick={() => setActiveTab("body")}
                             className={`flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === "body"
-                                    ? "text-text-primary"
-                                    : "text-text-secondary hover:text-text-primary"
+                                ? "text-text-primary"
+                                : "text-text-secondary hover:text-text-primary"
                                 }`}
                             style={{
                                 borderBottomColor:
@@ -378,8 +389,8 @@ export function HealthLogDialog({
                             aria-controls="health-nutrition-panel"
                             onClick={() => setActiveTab("nutrition")}
                             className={`flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === "nutrition"
-                                    ? "text-text-primary"
-                                    : "text-text-secondary hover:text-text-primary"
+                                ? "text-text-primary"
+                                : "text-text-secondary hover:text-text-primary"
                                 }`}
                             style={{
                                 borderBottomColor:

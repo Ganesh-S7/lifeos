@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Button, DeleteModal, Stat } from "@/components/ui";
+import { Button, DeleteModal, LoadError, Stat } from "@/components/ui";
+import { notify } from "@/lib/notifications";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateDisplay, formatDateValue } from "@/lib/utils/date";
 import { financeActions, useFinance } from "../../store/finance-store";
@@ -10,12 +11,12 @@ import { categorySpending, financialSnapshot, monthlyActivity } from "../../util
 import { monthlyActivityComparison, overallPositionComparison } from "../../utils/finance-comparisons";
 import { CategoryBreakdownChart } from "./category-breakdown-chart";
 import { FinanceCharts } from "./finance-charts";
+import { FinanceOverviewSkeleton } from "./finance-overview-skeleton";
 import { FinanceComparison } from "./finance-comparison";
 import { FinanceManager, type ManagerKind } from "./finance-manager";
 import { ManageFinancesDialog, type FinanceSection } from "./manage-finances-dialog";
 import { NetWorthBreakdownDialog } from "./net-worth-breakdown-dialog";
 import {
-    ArrowLeft,
     ArrowLeftRight,
     ArrowRight,
     Banknote,
@@ -28,13 +29,13 @@ import {
 } from "lucide-react";
 
 export function FinanceOverview() {
-    const { data, ready } = useFinance();
+    const { data, ready, loadError, retry } = useFinance();
     const [manager, setManager] = useState<ManagerKind | null>(null);
     const [manageOpen, setManageOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<FinanceSection>("account");
     const [breakdownOpen, setBreakdownOpen] = useState(false);
     const [editId, setEditId] = useState<string>();
-    const [target, setTarget] = useState<{ kind: ManagerKind; id: string; name: string } | null>(null);
+    const [target, setTarget] = useState<{ kind: ManagerKind; id: string; name: string; } | null>(null);
     const [error, setError] = useState("");
     const now = new Date();
     const month = formatDateValue(now).slice(0, 7);
@@ -83,8 +84,15 @@ export function FinanceOverview() {
             if (target.kind === "liability") financeActions.deleteLiability(target.id);
             if (target.kind === "transaction") financeActions.deleteTransaction(target.id);
             setError("");
+            const label = target.kind === "account" ? "Bank account"
+                : target.kind === "investment" ? "Investment"
+                    : target.kind === "liability" ? "Liability" : "Transaction";
+            notify.success(`${label} deleted.`);
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : "Could not delete item.");
+            notify.error("Unable to delete this item.", {
+                description: "Review any linked transactions and try again.",
+            });
         }
         setTarget(null);
     }
@@ -163,7 +171,7 @@ export function FinanceOverview() {
             unit: "points" as const,
             icon: Percent,
         },
-    ]
+    ];
 
     return (
         <div className="space-y-7">
@@ -182,135 +190,140 @@ export function FinanceOverview() {
                     </Link>
                 </div>
             </header>
-            {!ready && <p className="text-sm text-text-secondary">Loading finance data…</p>}
             {error && <p role="alert" className="rounded-lg bg-danger-subtle p-3 text-sm text-danger">{error}</p>}
-            <section className="space-y-3" aria-labelledby="snapshot-title">
-                <div className="flex justify-between items-center gap-4">
-                    <div>
-                        <h2 id="snapshot-title" className="text-base font-semibold text-text-primary">Overall financial snapshot</h2>
-                        <p className="text-xs text-text-secondary">Current balances, valuations and debt</p>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => openManage()}
-                    >
-                        Manage finances
-                    </Button>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {groups.map((group) => (
-                        <Stat
-                            key={group.kind}
-                            icon={group.icon}
-                            className="min-h-48"
-                            label={group.label}
-                            value={formatCurrency(group.value)}
-                            description={group.description}
-                            footer={
-                                <FinanceComparison
-                                    comparison={group.comparison}
-                                    period="since last month"
-                                    recordedValue={group.kind === "investment"}
-                                />
-                            }
-                            action={
-                                <button
-                                    type="button"
-                                    className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
-                                    onClick={() => openManage(group.kind)}
-                                >
-                                    {group.action} <ArrowRight size={10} className="group-hover:translate-x-0.5 duration-200 ease-in-out" />
-                                </button>
-                            }
-                        />
-                    ))}
-                    <Stat
-                        icon={Scale}
-                        className="min-h-48"
-                        label="Net worth"
-                        value={formatCurrency(snapshot.netWorth)}
-                        description="Bank balance + investments − debt"
-                        footer={
-                            <FinanceComparison
-                                comparison={positionComparisons.netWorth}
-                                period="since last month"
-                            />
-                        }
-                        action={
-                            <button
-                                type="button"
-                                className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
-                                onClick={() => setBreakdownOpen(true)}
-                            >
-                                View breakdown <ArrowRight size={10} className="group-hover:translate-x-1 duration-200 ease-in-out" />
-                            </button>
-                        }
-                    />
-                </div>
-            </section>
-            <section className="space-y-3" aria-labelledby="monthly-title">
-                <div className="flex justify-between item gap-4">
-                    <div>
-                        <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
-                        <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={data.accounts.length === 0}
-                        onClick={() => open("transaction")}
-                    >
-                        Record income or transfer
-                    </Button>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {monthCards.map((item) => (
-                        <Stat
-                            key={item.label}
-                            icon={item.icon}
-                            className="min-h-30"
-                            label={item.label}
-                            value={item.value}
-                            description=""
-                            footer={
-                                <FinanceComparison
-                                    comparison={item.comparison}
-                                    period="vs previous period"
-                                    unit={item.unit}
-                                />
-                            }
-                        />
-                    ))}
-                </div>
-            </section>
-            <FinanceCharts data={chartData} hasSnapshot={hasSnapshot} />
-            <CategoryBreakdownChart data={categories} />
-            <section className="rounded-2xl border border-border bg-surface p-5">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-base font-semibold text-text-primary">Recent transactions</h2>
-                    <Link href="/finance/expenses" className="text-sm text-primary hover:underline">Expenses</Link>
-                </div>
-                {recent.length === 0 && <p className="mt-4 text-sm text-text-muted">No transactions yet.</p>}
-                <div className="mt-3 divide-y divide-border-subtle">
-                    {recent.map((item) => (
-                        <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            {!ready ? (
+                loadError ? <LoadError message={loadError} onRetry={retry} /> : <FinanceOverviewSkeleton />
+            ) : (
+                <>
+                    <section className="space-y-3" aria-labelledby="snapshot-title">
+                        <div className="flex justify-between items-center gap-4">
                             <div>
-                                <p className="text-sm font-medium text-text-primary">{item.description}</p>
-                                <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")} · {formatDateDisplay(item.date)}</p>
-                                {item.demoAccount && <p className="text-xs text-text-muted">Demo record</p>}
+                                <h2 id="snapshot-title" className="text-base font-semibold text-text-primary">Overall financial snapshot</h2>
+                                <p className="text-xs text-text-secondary">Current balances, valuations and debt</p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm font-semibold text-text-primary">
-                                    {item.type === "income" || item.type === "investment_sale" ? "+" : item.type === "transfer" ? "↔ " : "−"}{formatCurrency(item.amount)}
-                                </span>
-                                {item.type !== "expense" && <button className="text-xs text-primary" onClick={() => open("transaction", item.id)}>Edit</button>}
-                                {item.type !== "expense" && <button className="text-xs text-danger" onClick={() => setTarget({ kind: "transaction", id: item.id, name: item.description })}>Delete</button>}
-                            </div>
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => openManage()}
+                            >
+                                Manage finances
+                            </Button>
                         </div>
-                    ))}
-                </div>
-            </section>
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {groups.map((group) => (
+                                <Stat
+                                    key={group.kind}
+                                    icon={group.icon}
+                                    className="min-h-48"
+                                    label={group.label}
+                                    value={formatCurrency(group.value)}
+                                    description={group.description}
+                                    footer={
+                                        <FinanceComparison
+                                            comparison={group.comparison}
+                                            period="since last month"
+                                            recordedValue={group.kind === "investment"}
+                                        />
+                                    }
+                                    action={
+                                        <button
+                                            type="button"
+                                            className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
+                                            onClick={() => openManage(group.kind)}
+                                        >
+                                            {group.action} <ArrowRight size={10} className="group-hover:translate-x-0.5 duration-200 ease-in-out" />
+                                        </button>
+                                    }
+                                />
+                            ))}
+                            <Stat
+                                icon={Scale}
+                                className="min-h-48"
+                                label="Net worth"
+                                value={formatCurrency(snapshot.netWorth)}
+                                description="Bank balance + investments − debt"
+                                footer={
+                                    <FinanceComparison
+                                        comparison={positionComparisons.netWorth}
+                                        period="since last month"
+                                    />
+                                }
+                                action={
+                                    <button
+                                        type="button"
+                                        className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
+                                        onClick={() => setBreakdownOpen(true)}
+                                    >
+                                        View breakdown <ArrowRight size={10} className="group-hover:translate-x-1 duration-200 ease-in-out" />
+                                    </button>
+                                }
+                            />
+                        </div>
+                    </section>
+                    <section className="space-y-3" aria-labelledby="monthly-title">
+                        <div className="flex justify-between item gap-4">
+                            <div>
+                                <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
+                                <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={data.accounts.length === 0}
+                                onClick={() => open("transaction")}
+                            >
+                                Record income or transfer
+                            </Button>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {monthCards.map((item) => (
+                                <Stat
+                                    key={item.label}
+                                    icon={item.icon}
+                                    className="min-h-30"
+                                    label={item.label}
+                                    value={item.value}
+                                    description=""
+                                    footer={
+                                        <FinanceComparison
+                                            comparison={item.comparison}
+                                            period="vs previous period"
+                                            unit={item.unit}
+                                        />
+                                    }
+                                />
+                            ))}
+                        </div>
+                    </section>
+                    <FinanceCharts data={chartData} hasSnapshot={hasSnapshot} />
+                    <CategoryBreakdownChart data={categories} />
+                    <section className="rounded-2xl border border-border bg-surface p-5">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-base font-semibold text-text-primary">Recent transactions</h2>
+                            <Link href="/finance/expenses" className="text-sm text-primary hover:underline">Expenses</Link>
+                        </div>
+                        {recent.length === 0 && <p className="mt-4 text-sm text-text-muted">No transactions yet.</p>}
+                        <div className="mt-3 divide-y divide-border-subtle">
+                            {recent.map((item) => (
+                                <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                                    <div>
+                                        <p className="text-sm font-medium text-text-primary">{item.description}</p>
+                                        <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")} · {formatDateDisplay(item.date)}</p>
+                                        {item.demoAccount && <p className="text-xs text-text-muted">Demo record</p>}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-semibold text-text-primary">
+                                            {item.type === "income" || item.type === "investment_sale" ? "+" : item.type === "transfer" ? "↔ " : "−"}{formatCurrency(item.amount)}
+                                        </span>
+                                        {item.type !== "expense" && <button className="text-xs text-primary" onClick={() => open("transaction", item.id)}>Edit</button>}
+                                        {item.type !== "expense" && <button className="text-xs text-danger" onClick={() => setTarget({ kind: "transaction", id: item.id, name: item.description })}>Delete</button>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </>
+            )}
             <ManageFinancesDialog
                 open={manageOpen}
                 activeTab={activeTab}

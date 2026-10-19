@@ -19,6 +19,7 @@ import {
 import { healthActions } from "../store/health-actions";
 import type { HealthTargets } from "../types/health";
 import { healthTargetsSchema } from "../schemas/health-targets-schema";
+import { notify } from "@/lib/notifications";
 
 interface ManageHealthTargetsDialogProps {
     open: boolean;
@@ -83,6 +84,7 @@ export function ManageHealthTargetsDialog({
     targets,
 }: ManageHealthTargetsDialogProps) {
     const [activeTab, setActiveTab] = useState<TargetsTab>("body");
+    const [isClearing, setIsClearing] = useState(false);
 
     const {
         register,
@@ -104,6 +106,7 @@ export function ManageHealthTargetsDialog({
         mode: "onSubmit",
         reValidateMode: "onChange",
     });
+    const isBusy = isSubmitting || isClearing;
 
     useEffect(() => {
         if (!open) {
@@ -129,8 +132,12 @@ export function ManageHealthTargetsDialog({
     const onSubmit = handleSubmit(async (values) => {
         try {
             await healthActions.saveTargets(values);
+            notify.success("Health targets updated.");
             handleDialogOpenChange(false);
         } catch (cause) {
+            notify.error("Unable to update your health targets.", {
+                description: "Review the form and try again. Your targets have not changed.",
+            });
             setError("root.server", {
                 type: "server",
                 message:
@@ -141,12 +148,31 @@ export function ManageHealthTargetsDialog({
         }
     });
 
+    async function handleClearTargets() {
+        if (isBusy) return;
+        setIsClearing(true);
+        clearSaveError();
+        try {
+            await healthActions.clearTargets();
+            notify.success("Health targets cleared.");
+            handleDialogOpenChange(false);
+        } catch {
+            const message = "Unable to clear your targets. Please try again.";
+            setError("root.server", { type: "server", message });
+            notify.error(message);
+        } finally {
+            setIsClearing(false);
+        }
+    }
+
     const hasSavedTargets = targets !== null;
 
     return (
         <Dialog
             open={open}
-            onOpenChange={handleDialogOpenChange}
+            onOpenChange={(nextOpen) => {
+                if (!isBusy) handleDialogOpenChange(nextOpen);
+            }}
         >
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
                 <DialogHeader>
@@ -352,28 +378,17 @@ export function ManageHealthTargetsDialog({
                             <Button
                                 type="button"
                                 variant="outline"
-                                disabled={isSubmitting}
-                                onClick={async () => {
-                                    try {
-                                        await healthActions.clearTargets();
-                                        handleDialogOpenChange(false);
-                                    } catch {
-                                        setError("root.server", {
-                                            type: "server",
-                                            message:
-                                                "Unable to clear your targets. Please try again.",
-                                        });
-                                    }
-                                }}
+                                disabled={isBusy}
+                                onClick={handleClearTargets}
                             >
-                                Clear targets
+                                {isClearing ? "Clearing..." : "Clear targets"}
                             </Button>
                         )}
 
                         <Button
                             type="button"
                             variant="outline"
-                            disabled={isSubmitting}
+                            disabled={isBusy}
                             onClick={() => handleDialogOpenChange(false)}
                         >
                             Cancel
@@ -381,7 +396,7 @@ export function ManageHealthTargetsDialog({
 
                         <Button
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={isBusy}
                         >
                             {isSubmitting ? "Saving..." : "Save targets"}
                         </Button>

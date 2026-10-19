@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Button, DeleteModal } from "@/components/ui";
+import { Button, DeleteModal, LoadError } from "@/components/ui";
 
 import { formatDateDisplay } from "@/lib/utils/date";
 
@@ -33,6 +33,8 @@ import { RecentHealthLogs } from "./recent-health-logs";
 import { ManageHealthTargetsDialog } from "./manage-health-targets-dialog";
 import { HealthAnalytics } from "./health-analytics";
 import { authClient } from "@/lib/auth-client";
+import { notify } from "@/lib/notifications";
+import { HealthOverviewSkeleton } from "./health-overview-skeleton";
 
 export function HealthOverview() {
 
@@ -57,6 +59,10 @@ export function HealthOverview() {
     const logs = useHealthStore((state) => state.logs);
     const targets = useHealthStore((state) => state.targets);
     const ready = useHealthStore((state) => state.ready);
+    const activeUserId = useHealthStore((state) => state.activeUserId);
+    const initialLoading = !ready || Boolean(
+        session?.user.id && activeUserId !== session.user.id,
+    );
 
     const [logDialogOpen, setLogDialogOpen] = useState(false);
     const [targetsDialogOpen, setTargetsDialogOpen] = useState(false);
@@ -71,6 +77,7 @@ export function HealthOverview() {
         useState<HealthLog | null>(null);
 
     const [pageError, setPageError] = useState("");
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const today = getTodayDateKey();
 
@@ -122,21 +129,27 @@ export function HealthOverview() {
     }
 
     async function handleDeleteLog() {
-        if (!deleteTarget) {
+        if (!deleteTarget || isDeleting) {
             return;
         }
 
+        setIsDeleting(true);
         try {
             await healthActions.deleteLog(deleteTarget.id);
 
             setPageError("");
+            notify.success("Health log deleted.");
         } catch (cause) {
             setPageError(
                 cause instanceof Error
                     ? cause.message
                     : "Unable to delete the health log. Please try again.",
             );
+            notify.error("Unable to delete the health log.", {
+                description: "Please try again. The log has not been deleted.",
+            });
         } finally {
+            setIsDeleting(false);
             setDeleteTarget(null);
         }
     }
@@ -160,7 +173,8 @@ export function HealthOverview() {
                     <button
                         type="button"
                         onClick={() => setTargetsDialogOpen(true)}
-                        className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-elevated"
+                        disabled={initialLoading}
+                        className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Manage targets
                     </button>
@@ -168,6 +182,7 @@ export function HealthOverview() {
                     <Button
                         type="button"
                         onClick={openAddLog}
+                        disabled={initialLoading}
                     >
                         Add health log
                     </Button>
@@ -183,34 +198,21 @@ export function HealthOverview() {
                 </p>
             )}
 
-            {!ready ? (
-                <div className="rounded-2xl border border-border bg-surface p-6">
-                    {loadError ? (
-                        <>
-                            <p role="alert" className="text-sm text-danger">
-                                {loadError}
-                            </p>
-
-                            {session?.user.id && (
-                                <Button
-                                    type="button"
-                                    className="mt-4"
-                                    onClick={() => {
-                                        void initializeForUser(
-                                            session.user.id,
-                                        );
-                                    }}
-                                >
-                                    Retry
-                                </Button>
-                            )}
-                        </>
-                    ) : (
-                        <p className="text-sm text-text-secondary">
-                            Loading your health data…
-                        </p>
-                    )}
-                </div>
+            {initialLoading ? (
+                loadError || (!sessionPending && !session?.user.id) ? (
+                    <LoadError
+                        message="Unable to load your health data. Check your connection and try again."
+                        onRetry={() => {
+                            if (session?.user.id) {
+                                void initializeForUser(session.user.id);
+                            } else {
+                                window.location.reload();
+                            }
+                        }}
+                    />
+                ) : (
+                    <HealthOverviewSkeleton />
+                )
             ) : (
                 <>
                     <HealthSummary
@@ -270,6 +272,7 @@ export function HealthOverview() {
                 description="This will permanently delete this health log and all its recorded measurements."
                 confirmText="Delete"
                 onConfirm={handleDeleteLog}
+                isLoading={isDeleting}
             />
         </div>
     );

@@ -10,11 +10,13 @@ import {
     type ExpenseSort,
 } from "@/features/finance/components/expenses/expenses-toolbar";
 import { ExpensesTable } from "@/features/finance/components/expenses/expenses-table";
+import { ExpensesSkeleton } from "@/features/finance/components/expenses/expenses-skeleton";
+import { notify } from "@/lib/notifications";
 
 import type { Expense } from "@/features/finance/types/expense";
 import type { ExpenseFormValues } from "@/features/finance/schemas/expense-schema";
 import { formatDateValue } from "@/lib/utils/date";
-import { DeleteModal } from "@/components/ui";
+import { DeleteModal, LoadError } from "@/components/ui";
 import Link from "next/link";
 import { financeActions, useFinance } from "@/features/finance/store/finance-store";
 
@@ -29,7 +31,7 @@ const categories = [
 ];
 
 export default function ExpensesPage() {
-    const { data, ready } = useFinance();
+    const { data, ready, loadError, retry } = useFinance();
     const [error, setError] = useState("");
     const expenses: Expense[] = data.transactions
         .filter((transaction) => transaction.type === "expense")
@@ -66,10 +68,14 @@ export default function ExpensesPage() {
                 note: data.note || undefined,
             });
             setError("");
+            notify.success(editingExpense ? "Expense updated." : "Expense saved.");
             setEditingExpense(null);
             return true;
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : "Could not save expense.");
+            notify.error("Unable to save this expense.", {
+                description: "Review the form and account balance, then try again.",
+            });
             return false;
         }
     };
@@ -86,8 +92,10 @@ export default function ExpensesPage() {
         try {
             financeActions.deleteTransaction(expenseToDelete.id);
             setError("");
+            notify.success("Expense deleted.");
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : "Could not delete expense.");
+            notify.error("Unable to delete this expense. Please try again.");
         }
 
         setExpenseToDelete(null);
@@ -114,7 +122,7 @@ export default function ExpensesPage() {
                     expense.merchant,
                     expense.category,
                     data.accounts.find((account) => account.id === expense.account)?.name ||
-                        data.transactions.find((transaction) => transaction.id === expense.id)?.demoAccount || "",
+                    data.transactions.find((transaction) => transaction.id === expense.id)?.demoAccount || "",
                     expense.note ?? "",
                 ].some((value) =>
                     value.toLowerCase().includes(normalizedSearch),
@@ -154,58 +162,63 @@ export default function ExpensesPage() {
 
     return (
         <div className="space-y-6">
-            {!ready && <p className="text-sm text-text-secondary">Loading finance data…</p>}
-            {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-            {data.accounts.length === 0 && (
-                <p className="rounded-xl border border-border bg-surface p-4 text-sm text-text-secondary">
-                    Add a bank account before recording expenses. {" "}
-                    <Link href="/finance" className="text-primary underline">Manage accounts</Link>
-                </p>
-            )}
             <ExpensesHeader
                 onAddExpense={() => setAddExpenseOpen(true)}
-                disabled={data.accounts.length === 0}
+                disabled={!ready || data.accounts.length === 0}
             />
+            {!ready ? (
+                loadError ? <LoadError message={loadError} onRetry={retry} /> : <ExpensesSkeleton />
+            ) : (
+                <>
+                    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+                    {data.accounts.length === 0 && (
+                        <p className="rounded-xl border border-border bg-surface p-4 text-sm text-text-secondary">
+                            Add a bank account before recording expenses. {" "}
+                            <Link href="/finance" className="text-primary underline">Manage accounts</Link>
+                        </p>
+                    )}
 
-            <ExpensesSummary expenses={expenses} />
+                    <ExpensesSummary expenses={expenses} />
 
-            <ExpensesToolbar
-                search={search}
-                category={category}
-                sort={sort}
-                date={date}
-                categories={categories}
-                onSearchChange={setSearch}
-                onCategoryChange={setCategory}
-                onSortChange={setSort}
-                onDateChange={setDate}
-                onReset={handleResetFilters}
-            />
+                    <ExpensesToolbar
+                        search={search}
+                        category={category}
+                        sort={sort}
+                        date={date}
+                        categories={categories}
+                        onSearchChange={setSearch}
+                        onCategoryChange={setCategory}
+                        onSortChange={setSort}
+                        onDateChange={setDate}
+                        onReset={handleResetFilters}
+                    />
 
-            <div className="flex items-center justify-between">
-                <p className="text-xs text-text-secondary">
-                    Showing{" "}
-                    <span className="font-medium text-text-primary">
-                        {filteredExpenses.length}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-medium text-text-primary">
-                        {expenses.length}
-                    </span>{" "}
-                    expenses
-                </p>
-            </div>
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs text-text-secondary">
+                            Showing{" "}
+                            <span className="font-medium text-text-primary">
+                                {filteredExpenses.length}
+                            </span>{" "}
+                            of{" "}
+                            <span className="font-medium text-text-primary">
+                                {expenses.length}
+                            </span>{" "}
+                            expenses
+                        </p>
+                    </div>
 
-            <ExpensesTable
-                expenses={filteredExpenses.map((expense) => ({
-                    ...expense,
-                    account: data.accounts.find((account) => account.id === expense.account)?.name ||
-                        data.transactions.find((transaction) => transaction.id === expense.id)?.demoAccount || "Historical",
-                }))}
-                onEdit={handleEditExpense}
-                onDelete={setExpenseToDelete}
-            />
+                    <ExpensesTable
+                        expenses={filteredExpenses.map((expense) => ({
+                            ...expense,
+                            account: data.accounts.find((account) => account.id === expense.account)?.name ||
+                                data.transactions.find((transaction) => transaction.id === expense.id)?.demoAccount || "Historical",
+                        }))}
+                        onEdit={handleEditExpense}
+                        onDelete={setExpenseToDelete}
+                    />
 
+                </>
+            )}
             <AddExpenseDialog
                 open={addExpenseOpen}
                 onOpenChange={(open) => {
