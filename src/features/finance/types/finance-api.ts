@@ -6,7 +6,21 @@ import type {
     Investment,
     Liability,
 } from "./finance";
-import type { FinanceTransactionRequest } from "../schemas/finance-request-schema";
+import type { z } from "zod";
+import type {
+    bankAccountRequestSchema,
+    investmentRequestSchema,
+    liabilityRequestSchema,
+    financeTransactionRequestSchema,
+    FinanceTransactionRequest,
+} from "../schemas/finance-request-schema";
+
+// JSON input types retain nullable optional fields before the server normalizes them.
+// These type-only dependencies do not load schemas or server modules in the client.
+export type BankAccountInput = z.input<typeof bankAccountRequestSchema>;
+export type InvestmentInput = z.input<typeof investmentRequestSchema>;
+export type LiabilityInput = z.input<typeof liabilityRequestSchema>;
+export type FinanceTransactionInput = z.input<typeof financeTransactionRequestSchema>;
 
 // Reuse the frontend's numeric money, ISO timestamps, and optional-field conventions.
 export type BankAccountDto = BankAccount;
