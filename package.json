@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build",
+    "build": "prisma generate --config prisma7.config.ts && next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -44,5 +44,8 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@10.10.0"
+  "packageManager": "pnpm@10.10.0",
+  "engines": {
+    "node": ">=22.23.3 <23"
+  }
 }

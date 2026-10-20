@@ -2,6 +2,14 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+Use Node.js **22.23.3**, pinned in `.nvmrc`, and **pnpm 10.10.0**, declared
+in `package.json`. With nvm installed, run `nvm install` and `nvm use` (or
+`nvm install 22.23.3` and `nvm use 22.23.3` with nvm-windows).
+The `engines` range permits compatible Node 22 patches from this baseline;
+it does not install or select Node. Configure CI to use `.nvmrc` explicitly.
+
+Install the locked dependencies with `pnpm install --frozen-lockfile`.
+
 First, run the development server:
 
 ```bash
@@ -19,6 +27,39 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Production build
+
+```bash
+pnpm build
+pnpm start
+```
+
+`pnpm build` runs `prisma generate --config prisma7.config.ts` before
+`next build`. A generation failure stops compilation. This explicit sequence
+does not depend on install hooks or automatic pre/post-script execution.
+The generated client in `src/generated/prisma` is intentionally ignored by
+Git, so build environments must install development dependencies, including
+the Prisma CLI. Do not rely on a previously generated local client.
+
+Client generation reads the schema and writes generated code; it does not
+apply migrations, seed records, or connect to MySQL. Database migrations are
+a separate, controlled deployment step and are not part of `pnpm build`.
+
+The server modules validate `DATABASE_URL` and `BETTER_AUTH_SECRET` when
+imported. Provide them through protected build and runtime environment
+configuration, along with the environment-specific `BETTER_AUTH_URL` (HTTPS
+in production). Never use `NEXT_PUBLIC_` for credentials or auth secrets, and
+never commit secret environment files. These requirements come from server
+initialization, not Prisma client generation. `SHADOW_DATABASE_URL` belongs
+to development migration tooling and is not required for generation or the
+production runtime.
+
+The current `next/font/google` imports download Geist fonts during the build.
+Build workers need HTTPS access to Google Fonts and its font-file hosts;
+the built application serves the fonts locally afterward. An offline build
+has not been established. Production builds must finish successfully before
+running `pnpm start`; an interrupted compile is not a successful build.
 
 ## Learn More
 
