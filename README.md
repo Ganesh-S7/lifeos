@@ -165,6 +165,111 @@ constructing the adapter. Prisma CLI migrations use a separate connection path
 and need their own verified provider TLS setup before any future migration;
 these runtime variables do not configure the CLI or apply migrations.
 
+## Public authentication deployment
+
+`BETTER_AUTH_URL` must be an explicitly configured canonical HTTP(S) origin.
+Local development continues to use `http://localhost:3000`; actual production
+runtime requires HTTPS. Production additional origins must also use HTTPS.
+No domain is hardcoded or inferred from Host, forwarded-host or Vercel preview
+headers. Missing or invalid configuration fails closed, without echoing its
+contents. `BETTER_AUTH_SECRET` is required, and production requires at least
+32 characters: supply a securely generated random secret, never a sample value.
+Keep it stable between deployments unless intentionally rotating sessions.
+
+Better Auth and the Finance/Health mutation guard use the same pure origin
+parser and allowlist builder. `BETTER_AUTH_TRUSTED_ORIGINS` remains an explicit
+comma-separated list; normalized entries are deduplicated. Wildcards (including
+encoded wildcard hostnames), credentials, paths, queries and fragments are
+rejected. Do not add a wildcard for Vercel previews; configure each approved
+HTTPS origin explicitly. Configuring another origin does not share cookies
+between domains or enable arbitrary credentialed CORS.
+
+### Local builds versus production runtime
+
+`next.config.ts` uses Next's documented configuration-function `phase` argument
+to set an internal, process-only `LIFEOS_NEXT_PHASE` marker. Build workers inherit
+it. Only the production-build phase permits HTTP origins with an exact loopback
+hostname (`localhost`, `127.0.0.1` or `[::1]`), so an ordinary `pnpm build` using
+the existing local environment still works. Public HTTP origins remain invalid
+during builds. The dev/server config callback overwrites the marker on startup,
+and a cold serverless runtime without the marker enforces HTTPS.
+
+**Do not configure `LIFEOS_NEXT_PHASE` in Vercel, shell profiles or environment
+files.** It is internal lifecycle context, not an authentication bypass setting.
+It must never be added to Next's `env` config, which would inline a build-time
+exception into deployed code. See [Next configuration phases](https://nextjs.org/docs/app/api-reference/config/next-config-js#phase).
+An additional Better Auth before-hook rechecks production HTTPS for actual auth
+operations without any build exception. Even an accidentally retained phase
+marker cannot permit production HTTP signup, sign-in or session access.
+
+A successful localhost production build does not make HTTP `next start` an
+approved production authentication environment. For HTTP localhost use
+`pnpm dev`; production-server testing requires an HTTPS origin and endpoint.
+Configure the final canonical HTTPS URL and protected server secrets for the
+intended Vercel environments before deployment. No actual `.env` is modified
+by these checks and none of these variables should use `NEXT_PUBLIC_`.
+
+### Cookies, signup and recovery
+
+Production cookies explicitly use Secure, HttpOnly and SameSite=Lax. They remain
+host-only, with cross-subdomain sharing disabled. Better Auth selects its own
+cookie names and Secure prefixes; no domain or name overrides are configured.
+Local HTTP development keeps non-Secure cookies. CSRF/origin checks remain
+enabled, and request-host proxy inference is disabled. Session durations,
+signup auto-sign-in and logout/revocation behavior retain their existing defaults.
+
+Public email/password signup stays enabled. Passwords remain 8–128 characters;
+email uniqueness is enforced by Better Auth and the existing MySQL unique index.
+Dashboard and API session checks and Health/Finance ownership filtering remain
+unchanged. See [Better Auth cookies](https://better-auth.com/docs/concepts/cookies).
+
+Email delivery is **not configured**. Verification and password-reset endpoints
+exist in the installed library, but their send operations are unavailable without
+senders. Email verification is not mandatory, and users can currently register
+and sign in with an unverified email. Before calling public registration fully
+production-ready, select an email provider and implement verified ownership,
+verification/resend and recovery UI, expiry/replay tests, abuse controls and
+privacy-safe delivery diagnostics. Never log tokens or verification/reset URLs.
+
+On a real HTTPS deployment, inspect signup/sign-in and logout Set-Cookie headers
+in browser developer tools. Record only Secure, HttpOnly, SameSite, Path and
+whether Domain is absent; confirm logout invalidates the session. Never paste
+cookie values or unredacted network captures into reports. Configuration and
+memory-adapter tests do not establish real browser or production HTTPS behavior.
+
+### Authentication rate limits and deployment gates
+
+Production explicitly enables Better Auth's memory rate limiter. Limits are
+per resolved client IP and normalized auth path **within one process**:
+
+| Auth path | Requests | Window |
+| --- | --- | --- |
+| `/sign-up/email` | 3 | 300 seconds |
+| `/sign-in/email` | 3 | 60 seconds |
+| `/request-password-reset` | 3 | 300 seconds |
+| `/reset-password` | 3 | 300 seconds |
+| `/send-verification-email` | 3 | 300 seconds |
+| `/verify-email` | 10 | 60 seconds |
+| Other auth paths | 100 | 60 seconds |
+
+The email-related limits do not enable email delivery. Development retains
+disabled rate limiting. The installed library returns HTTP 429 with
+`X-Retry-After` when a limit is reached. See [Better Auth rate limiting](https://better-auth.com/docs/concepts/rate-limit).
+
+**Shared protection is still a deployment gate.** Memory counters reset with
+instances and are not shared across Vercel functions. Better Auth supports
+database storage, but the required `RateLimit` model/table is absent: review and
+add its schema/migration in a separate task before selecting `storage: database`.
+An alternative is supported shared storage with atomic consumption/increment;
+no partial storage adapter is configured here. Verify trusted client-IP
+attribution on Vercel before launch; an unresolved IP uses a shared per-path
+fallback bucket, which can throttle unrelated users. Do not trust arbitrary
+forwarded IP headers to make rate limits appear per-user.
+
+Release gates remain: final HTTPS URL and secrets, shared rate limiting and
+verified IP attribution, functioning verification/recovery email flows, and a
+staging browser check of cookies, session lifecycle, CSRF rejection and isolation.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

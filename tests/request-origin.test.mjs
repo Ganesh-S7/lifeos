@@ -2,7 +2,7 @@ import "./helpers/register-typescript.mjs";
 import assert from "node:assert/strict";
 import test, { beforeEach } from "node:test";
 import { registerHooks } from "node:module";
-import { validateMutationOrigin } from "../src/lib/server/request-origin.ts";
+const { validateMutationOrigin } = await import("../src/lib/server/request-origin.ts");
 
 const canonical = "https://app.example.com";
 const rejection = {
