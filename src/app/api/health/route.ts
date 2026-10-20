@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDateValue } from "@/lib/utils/date";
+import { formatUtcDateValue } from "@/lib/utils/date";
 
 import type {
     HealthLog as HealthLogDto,
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
 
         const logs: HealthLogDto[] = databaseLogs.map((log) => ({
             id: log.id,
-            date: formatDateValue(log.date),
+            date: formatUtcDateValue(log.date),
 
             weightKg:
                 log.weightKg === null

@@ -3,9 +3,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-    formatDateValue,
-} from "@/lib/utils/date";
+import { formatUtcDateValue } from "@/lib/utils/date";
 import type { HealthLog as HealthLogDto } from "@/features/health/types/health";
 
 export const runtime = "nodejs";
@@ -31,12 +29,12 @@ function isValidCalendarDate(value: string): boolean {
     const month = Number(match[2]);
     const day = Number(match[3]);
 
-    const date = new Date(year, month - 1, day);
+    const date = new Date(Date.UTC(year, month - 1, day));
 
     return (
-        date.getFullYear() === year &&
-        date.getMonth() === month - 1 &&
-        date.getDate() === day
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day
     );
 }
 
@@ -216,7 +214,7 @@ export async function POST(request: Request) {
         // 7. Convert database values into the frontend DTO.
         const response: HealthLogDto = {
             id: savedLog.id,
-            date: formatDateValue(savedLog.date),
+            date: formatUtcDateValue(savedLog.date),
 
             weightKg:
                 savedLog.weightKg === null

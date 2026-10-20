@@ -6,6 +6,14 @@ export function formatDateValue(date: Date) {
     return `${year}-${month}-${day}`;
 }
 
+/**
+ * Serialize a Prisma DATE represented as UTC midnight, without local conversion.
+ * Use formatDateValue for frontend local calendar dates instead.
+ */
+export function formatUtcDateValue(date: Date): string {
+    return date.toISOString().slice(0, 10);
+}
+
 export function formatDateDisplay(date: string | Date): string {
     // Parse YYYY-MM-DD as a local calendar date to avoid timezone shifts.
     const dateValue =
