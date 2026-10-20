@@ -371,22 +371,105 @@ resets after a full window without an accepted request; rejected requests do
 not extend it. This is the installed library's inactivity-window behavior,
 not a fixed wall-clock window.
 
-**Cleanup:** on successful renewal of an expired existing bucket, Better Auth
-best-effort deletes rows older than the longest configured window (currently
-300 seconds). It does not prune on first insert or every request, so one-off
-keys can accumulate. Before public launch, schedule a trusted maintenance job
-(no public cleanup endpoint) to run bounded batches, e.g.:
+### Scheduled authentication rate-limit cleanup
 
-```sql
-DELETE FROM rate_limit
-WHERE lastRequest < (UNIX_TIMESTAMP() - 86400) * 1000
-LIMIT 1000;
+Better Auth's native opportunistic pruning remains unchanged: renewing an
+expired existing bucket can prune rows older than its longest window (currently
+300 seconds). One-off rows may otherwise accumulate. A separate bounded job now
+removes records whose `lastRequest` is **strictly older than seven days**.
+That field is a millisecond `BigInt` recording the last accepted request, not a
+creation date. The seven-day cutoff exceeds every current rate-limit window;
+recheck this safety margin when changing auth rules. Keep clocks synchronized.
+
+`GET /api/cron/cleanup-rate-limits` selects at most **500 IDs per batch**, processes
+at most **10 batches** (5000 candidates), and rechecks the same stale timestamp
+condition in each deletion. A row refreshed after selection is preserved. Only
+`RateLimit` records are touched. Duplicates, overlapping invocations and repeated
+runs are safe. Completed batches remain committed if a later batch fails or the
+60-second function limit interrupts processing. There are no application retries;
+a subsequent invocation continues from the remaining stale rows.
+
+Successful responses and success logs contain only `deleted`, `batches`, and
+`limitReached`. If `limitReached` is true, the final batch was full and more rows
+**may** remain; the next daily run can continue. It is a conservative signal, not
+an exact backlog count. Monitor repeated true results and failures rather than
+assuming every invocation empties the table. Errors return a generic 500 and log
+only the existing sanitized error classification. All route responses include
+`Cache-Control: no-store`.
+
+#### Schedule and secret configuration
+
+`vercel.json` registers this route at **`0 4 * * *` (daily UTC)**. Vercel Hobby
+may invoke it at any point within the 04:00-04:59 UTC hour. Delivery is best effort:
+a run may be missed or duplicated. Scheduled jobs target **Production**, not
+Preview. See [Vercel Cron management](https://vercel.com/docs/cron-jobs/manage-cron-jobs)
+and [Hobby scheduling limits](https://vercel.com/docs/cron-jobs/usage-and-pricing).
+
+In Vercel Project Settings > Environment Variables:
+
+1. Add a server-only `CRON_SECRET` scoped to **Production**, using an independent,
+   high-entropy random token (for example, 32 random bytes encoded as hex from a
+   secret manager). Do not reuse the authentication secret or commit the value.
+2. Add a **different** `CRON_SECRET` scoped to **Preview** for authorized manual
+   Preview testing. Do not expose it with `NEXT_PUBLIC_` or place it in a URL.
+3. Redeploy the relevant environment after changing its secret. Vercel Cron sends
+   `Authorization: Bearer <CRON_SECRET>` on production invocations. The route
+   compares fixed-length SHA-256 digests with Node's `timingSafeEqual`.
+
+An absent, empty or whitespace-only configured secret, missing bearer header,
+or incorrect token returns **401**, before Prisma initialization. Cookies, user
+sessions, Origin, query-string secrets and cron-looking User-Agent headers do
+not authorize cleanup. The public mutation-origin guard is not used for cron.
+
+#### Local and manual Preview checks
+
+Set a local `CRON_SECRET` through a protected local environment before starting
+`pnpm dev`; use the same value when testing. Use the intended local/test datasource.
+In another PowerShell 7 terminal, read the token without placing its value in
+command history, then invoke the endpoint:
+
+```powershell
+$protectedToken = Read-Host 'Cron secret for this target' -AsSecureString
+$token = [System.Net.NetworkCredential]::new('', $protectedToken).Password
+$target = 'http://localhost:3000/api/cron/cleanup-rate-limits'
+Invoke-WebRequest -Uri $target -SkipHttpErrorCheck `
+    -Headers @{ Authorization = "Bearer $token" } | Select-Object StatusCode, Content
+Remove-Variable token, protectedToken
+
+# No authorization must return 401.
+(Invoke-WebRequest -Uri $target -SkipHttpErrorCheck).StatusCode
 ```
 
-Run batches with a pause until fewer than 1000 rows are removed, and monitor
-failures/table size without logging keys. The 24-hour retention exceeds every
-current window; reassess it if any future rule exceeds that duration. Use UTC
-synchronized clocks across app and database nodes. Never delete active buckets.
+For Preview, use its HTTPS URL and its **Preview** secret, plus authorized Vercel
+deployment-protection access if configured. This checks the route manually; it
+does not establish that a scheduled job runs in Preview. Do not print request
+headers, secrets, raw IP keys or raw database diagnostics.
+
+Focused mocked tests cover authorization, responses, bounded processing,
+concurrent-refresh protection and partial failures. The opt-in real MySQL check
+uses two connections and restricts every query to disposable fixture keys:
+
+```powershell
+$env:LIFEOS_TEST_MYSQL_CLEANUP = '1'
+node --experimental-transform-types --test tests/rate-limit-cleanup.mysql.test.mjs
+Remove-Item Env:LIFEOS_TEST_MYSQL_CLEANUP
+```
+
+#### Production verification still required
+
+After deployment, inspect Project Settings > Cron Jobs for the registered daily
+job, and inspect its invocation/function logs filtered to
+`/api/cron/cleanup-rate-limits` or `[cron cleanup-rate-limits]`. Check the actual
+invocation time, HTTP status, counts and `limitReached`. A 401 suggests a missing
+or mismatched Production secret or an old deployment; a 500 is a classified
+cleanup failure and may follow partially committed batches. Confirm subsequent
+runs resume safely, and investigate missing daily invocations or persistent
+backlogs through the platform logs without adding unbounded retries.
+
+**Scheduled production execution has not been verified.** Implementation, mocked
+route tests and local MySQL checks do not prove job registration, delivery,
+Production secret injection, hosted TLS connectivity or production execution.
+These remain deployment checks; no hosted cleanup was invoked by this task.
 
 ### Vercel client-IP strategy and required Preview verification
 
@@ -518,7 +601,8 @@ user and synthetic counters in `finally`. It is explicitly skipped in
 the default suite; never point it at a hosted database.
 
 Release gates remain: deploy the additive migration, final HTTPS URL/secrets,
-verified IP attribution, scheduled expired-row cleanup, functioning
+verified IP attribution, Production cron secret/configuration and observed cleanup
+execution, functioning
 verification/recovery email flows, and a staging browser check of cookies,
 session lifecycle, CSRF rejection and isolation.
 
