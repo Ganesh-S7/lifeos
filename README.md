@@ -35,8 +35,19 @@ pnpm build
 pnpm start
 ```
 
-`pnpm build` runs `prisma generate --config prisma7.config.ts` before
-`next build`. A generation failure stops compilation. This explicit sequence
+`pnpm build` runs this exact command:
+
+```bash
+prisma generate --config prisma7.config.ts && next build --webpack
+```
+
+Production builds explicitly use Webpack, supported by the installed Next.js
+**16.3.8** CLI. The current default Turbopack build fails during CSS-worker
+startup, including outside the restricted sandbox; the Webpack production
+build has passed. This is a verified build-path workaround, not a fix for the
+underlying Turbopack issue.
+
+A Prisma generation failure stops compilation. This explicit sequence
 does not depend on install hooks or automatic pre/post-script execution.
 The generated client in `src/generated/prisma` is intentionally ignored by
 Git, so build environments must install development dependencies, including
