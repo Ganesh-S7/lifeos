@@ -239,8 +239,8 @@ memory-adapter tests do not establish real browser or production HTTPS behavior.
 
 ### Authentication rate limits and deployment gates
 
-Production explicitly enables Better Auth's memory rate limiter. Limits are
-per resolved client IP and normalized auth path **within one process**:
+Production explicitly enables Better Auth's shared MySQL rate limiter. Limits
+apply to the resolved client IP and normalized auth path across instances:
 
 | Auth path | Requests | Window |
 | --- | --- | --- |
@@ -256,19 +256,74 @@ The email-related limits do not enable email delivery. Development retains
 disabled rate limiting. The installed library returns HTTP 429 with
 `X-Retry-After` when a limit is reached. See [Better Auth rate limiting](https://better-auth.com/docs/concepts/rate-limit).
 
-**Shared protection is still a deployment gate.** Memory counters reset with
-instances and are not shared across Vercel functions. Better Auth supports
-database storage, but the required `RateLimit` model/table is absent: review and
-add its schema/migration in a separate task before selecting `storage: database`.
-An alternative is supported shared storage with atomic consumption/increment;
-no partial storage adapter is configured here. Verify trusted client-IP
-attribution on Vercel before launch; an unresolved IP uses a shared per-path
-fallback bucket, which can throttle unrelated users. Do not trust arbitrary
-forwarded IP headers to make rate limits appear per-user.
+Better Auth and its Prisma adapter are **1.7.10**, with Prisma **7.10.1**.
+`RateLimit` maps to `rate_limit`; its unique `key` prevents competing first
+requests from creating independent counters. `lastRequest` is a millisecond
+`BigInt`, indexed for cleanup. Deploy migration
+`20261021000000_auth_rate_limit` before deploying this configuration; it adds
+only this table. This task applied it only to loopback MySQL, never a hosted DB.
 
-Release gates remain: final HTTPS URL and secrets, shared rate limiting and
-verified IP attribution, functioning verification/recovery email flows, and a
-staging browser check of cookies, session lifecycle, CSRF rejection and isolation.
+A real MySQL concurrency test exposed an installed adapter defect: guarded
+`update()` calls could return a row even when another request had consumed the
+last slot. The `rateLimitSafeAdapter` override handles **only** the native
+limiter's `incrementOne` operation with guarded Prisma `updateMany()` and its
+actual affected-row count. It preserves the native limiter, rules, expiry,
+first-insert handling and HTTP 429 contract; no custom SQL limiter is used.
+Keep this regression test when upgrading Prisma or Better Auth.
+
+**Window behavior:** every accepted request refreshes `lastRequest`. A bucket
+resets after a full window without an accepted request; rejected requests do
+not extend it. This is the installed library's inactivity-window behavior,
+not a fixed wall-clock window.
+
+**Cleanup:** on successful renewal of an expired existing bucket, Better Auth
+best-effort deletes rows older than the longest configured window (currently
+300 seconds). It does not prune on first insert or every request, so one-off
+keys can accumulate. Before public launch, schedule a trusted maintenance job
+(no public cleanup endpoint) to run bounded batches, e.g.:
+
+```sql
+DELETE FROM rate_limit
+WHERE lastRequest < (UNIX_TIMESTAMP() - 86400) * 1000
+LIMIT 1000;
+```
+
+Run batches with a pause until fewer than 1000 rows are removed, and monitor
+failures/table size without logging keys. The 24-hour retention exceeds every
+current window; reassess it if any future rule exceeds that duration. Use UTC
+synchronized clocks across app and database nodes. Never delete active buckets.
+
+**Client-IP attribution remains a deployment gate.** The installed library's
+default accepts a single-value `X-Forwarded-For`, which is not a verified trust
+boundary here. `advanced.ipAddress.ipAddressHeaders: []` deliberately ignores
+all forwarding headers, without disabling IP tracking or limiting. Production
+uses the library's shared `no-trusted-ip` per-path bucket until a platform-owned,
+edge-overwritten IP header is verified on the deployed Vercel environment.
+This prevents header rotation from bypassing limits, but unrelated users share
+budgets and can block one another. Do not launch publicly with this fallback:
+verify spoofing resistance through the actual ingress, then explicitly configure
+only the proven header. `trustedProxyHeaders: false` protects URL attribution;
+it does not itself secure rate-limiter IP attribution.
+
+Local integration check (requires generated client and the migration on a
+loopback MySQL datasource; the test never applies migrations):
+
+```powershell
+$env:LIFEOS_TEST_MYSQL_RATE_LIMIT = '1'
+node --experimental-transform-types --test tests/auth-rate-limit.mysql.test.mjs
+Remove-Item Env:LIFEOS_TEST_MYSQL_RATE_LIMIT
+```
+
+It uses two independent Prisma pools/auth instances, tests all configured paths,
+100-request default, concurrent creation/increment/renewal and native cleanup,
+verifies signup/login/session/logout across clients, and deletes its disposable
+user and synthetic counters in `finally`. It is explicitly skipped in
+the default suite; never point it at a hosted database.
+
+Release gates remain: deploy the additive migration, final HTTPS URL/secrets,
+verified IP attribution, scheduled expired-row cleanup, functioning
+verification/recovery email flows, and a staging browser check of cookies,
+session lifecycle, CSRF rejection and isolation.
 
 ## Learn More
 

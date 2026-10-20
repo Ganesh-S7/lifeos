@@ -37,7 +37,7 @@ function options(overrides = {}) {
 function testAuth(config) {
     return betterAuth({
         ...config,
-        database: memoryAdapter({ user: [], account: [], session: [], verification: [] }),
+        database: memoryAdapter({ user: [], account: [], session: [], verification: [], rateLimit: [] }),
         logger: { disabled: true },
     });
 }
@@ -137,7 +137,7 @@ test("production HTTP auth is rejected even with a retained build marker", async
     const config = options({
         BETTER_AUTH_URL: "http://localhost:3000", LIFEOS_NEXT_PHASE: PHASE_PRODUCTION_BUILD,
     });
-    const db = { user: [], account: [], session: [], verification: [] };
+    const db = { user: [], account: [], session: [], verification: [], rateLimit: [] };
     const auth = betterAuth({ ...config, database: memoryAdapter(db), logger: { disabled: true } });
     const response = await auth.handler(new Request("http://localhost:3000/api/auth/sign-up/email", {
         method: "POST",
@@ -186,10 +186,9 @@ test("public signup, password policy and Better Auth CSRF protections remain ena
     assert.equal(config.advanced.crossSubDomainCookies.enabled, false);
 });
 
-test("installed Better Auth enforces the configured per-path memory rate limits", async () => {
+test("installed Better Auth enforces the configured per-path database rate limits", async () => {
     const config = options();
-    // Better Auth's memory buckets are module-wide. Give this fixture a distinct
-    // synthetic IP so earlier request tests cannot consume its route budgets.
+    // A test-only IP header isolates the synthetic route budgets.
     const auth = testAuth({
         ...config,
         advanced: {
@@ -198,10 +197,18 @@ test("installed Better Auth enforces the configured per-path memory rate limits"
         },
     });
     const context = await auth.$context;
-    assert.equal(context.rateLimit.storage, "memory");
+    assert.equal(context.rateLimit.storage, "database");
     assert.equal(context.rateLimit.enabled, true);
     assert.equal(context.rateLimit.window, 60);
     assert.equal(context.rateLimit.max, 100);
+    assert.deepEqual(config.rateLimit.customRules, {
+        "/sign-up/email": { window: 300, max: 3 },
+        "/sign-in/email": { window: 60, max: 3 },
+        "/request-password-reset": { window: 300, max: 3 },
+        "/reset-password": { window: 300, max: 3 },
+        "/send-verification-email": { window: 300, max: 3 },
+        "/verify-email": { window: 60, max: 10 },
+    });
 
     for (const [path, rule] of Object.entries(config.rateLimit.customRules)) {
         for (let index = 0; index < rule.max + 1; index++) {
@@ -222,6 +229,27 @@ test("installed Better Auth enforces the configured per-path memory rate limits"
                 assert.ok(Number(response.headers.get("X-Retry-After")) > 0);
             }
         }
+    }
+});
+
+test("forged forwarding headers cannot obtain new rate-limit buckets", async () => {
+    const config = options();
+    assert.deepEqual(config.advanced.ipAddress.ipAddressHeaders, []);
+    assert.notEqual(config.advanced.ipAddress.disableIpTracking, true);
+    const auth = testAuth(config);
+    for (let index = 0; index < 5; index++) {
+        const response = await auth.handler(new Request(`${canonical}/api/auth/sign-in/email`, {
+            method: "POST",
+            headers: {
+                Origin: canonical,
+                "Content-Type": "application/json",
+                "X-Forwarded-For": `192.0.2.${index + 1}`,
+                "X-Real-IP": `198.51.100.${index + 1}`,
+                "X-Vercel-Forwarded-For": `203.0.113.${index + 1}`,
+            },
+            body: "{}",
+        }));
+        assert.equal(response.status, index < 3 ? 400 : 429);
     }
 });
 
@@ -317,7 +345,7 @@ test("auth.ts passes the validated configuration to Better Auth with the unchang
         assert.equal(capture.options.baseURL, canonical);
         assert.deepEqual(capture.options.trustedOrigins, [canonical]);
         assert.equal(capture.options.advanced.useSecureCookies, true);
-        assert.equal(capture.options.rateLimit.storage, "memory");
+        assert.equal(capture.options.rateLimit.storage, "database");
         assert.deepEqual(capture.adapter, { provider: "mysql" });
     } finally {
         for (const [name, value] of Object.entries(saved)) {

@@ -79,12 +79,15 @@ export function authOptions(env: AuthEnvironment = process.env) {
             },
             crossSubDomainCookies: { enabled: false },
             trustedProxyHeaders: false,
+            // Enable a client-IP header only after verifying that the deployment
+            // edge overwrites it. Until then, use the shared per-path fallback.
+            ipAddress: { ipAddressHeaders: [] },
             disableCSRFCheck: false,
             disableOriginCheck: false,
         },
         rateLimit: {
             enabled: production,
-            storage: "memory",
+            storage: "database",
             window: 60,
             max: 100,
             customRules: {
