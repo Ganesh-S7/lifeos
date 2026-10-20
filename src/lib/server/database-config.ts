@@ -37,7 +37,7 @@ function normalizeCertificateBundle(value: string): string {
     return `${certificates.join("\n")}\n`;
 }
 
-function databaseTlsOptions(env: DatabaseEnvironment): false | VerifiedTlsOptions {
+export function databaseTlsPolicy(env: DatabaseEnvironment = process.env) {
     const mode = env.DATABASE_SSL_MODE;
     if (mode !== undefined && mode !== "disable" && mode !== "verify") {
         throw new Error("DATABASE_SSL_MODE must be exactly disable or verify.");
@@ -51,14 +51,24 @@ function databaseTlsOptions(env: DatabaseEnvironment): false | VerifiedTlsOption
         if (env.DATABASE_SSL_CA !== undefined) {
             throw new Error("DATABASE_SSL_CA requires DATABASE_SSL_MODE=verify outside production.");
         }
-        return false;
+        return { enabled: false as const };
     }
 
-    if (env.DATABASE_SSL_CA !== undefined) {
-        return {
-            rejectUnauthorized: true,
-            ca: normalizeCertificateBundle(env.DATABASE_SSL_CA),
-        };
+    return {
+        enabled: true as const,
+        ca: env.DATABASE_SSL_CA === undefined
+            ? undefined
+            : normalizeCertificateBundle(env.DATABASE_SSL_CA),
+    };
+}
+
+function databaseTlsOptions(env: DatabaseEnvironment): false | VerifiedTlsOptions {
+    const policy = databaseTlsPolicy(env);
+    if (!policy.enabled) {
+        return false;
+    }
+    if (policy.ca !== undefined) {
+        return { rejectUnauthorized: true, ca: policy.ca };
     }
 
     // Available since Node 22.15; our pinned Node 22.23.3 supports this API,

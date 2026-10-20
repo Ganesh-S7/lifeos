@@ -3,13 +3,60 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+import { databaseTlsPolicy } from "./src/lib/server/database-config";
+
+// Only the policy wrapper supplies these process-scoped connection values.
+// Generation/validation need no datasource. Keep direct non-TLS local tooling;
+// verified/production database commands must use `pnpm db:cli`.
+function loopbackDatabase(value: string | undefined): string | undefined {
+  try {
+    const url = new URL(value ?? "");
+    return url.protocol === "mysql:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+      ? value
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const preparedUrl = process.env.LIFEOS_PRISMA_DATABASE_URL;
+const localPlaintext = process.env.NODE_ENV !== "production" &&
+  (process.env.DATABASE_SSL_MODE === undefined || process.env.DATABASE_SSL_MODE === "disable") &&
+  process.env.DATABASE_SSL_CA === undefined;
+
+// Validate process-scoped inputs too; a stale or manually supplied internal
+// variable must not re-enable an insecure production connection.
+if (preparedUrl) {
+  const policy = databaseTlsPolicy();
+  let valid = false;
+  try {
+    const url = new URL(preparedUrl);
+    valid = url.protocol === "mysql:" && !url.hash && (policy.enabled
+      ? url.searchParams.getAll("sslaccept").length === 1 &&
+        url.searchParams.get("sslaccept") === "strict" &&
+        url.searchParams.getAll("prefer_socket").length === 1 &&
+        url.searchParams.get("prefer_socket") === "false" &&
+        !url.searchParams.has("socket") &&
+        [...url.searchParams.keys()].every((key) =>
+          !key.toLowerCase().startsWith("ssl") || key === "sslaccept" || key === "sslcert")
+      : loopbackDatabase(preparedUrl) !== undefined);
+  } catch {
+    // Never echo datasource values or parser diagnostics.
+  }
+  if (!valid) {
+    throw new Error("Invalid Prisma CLI connection policy. Use pnpm db:cli.");
+  }
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
-    shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"],
+    url: preparedUrl ?? (localPlaintext ? loopbackDatabase(process.env.DATABASE_URL) : undefined),
+    shadowDatabaseUrl: !preparedUrl && localPlaintext
+      ? loopbackDatabase(process.env.SHADOW_DATABASE_URL)
+      : undefined,
   },
 });

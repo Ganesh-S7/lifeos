@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "prisma generate --config prisma7.config.ts && next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:cli": "node scripts/prisma-db.mjs"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.10",

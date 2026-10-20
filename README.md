@@ -167,14 +167,98 @@ All database variables are server-only and must never use `NEXT_PUBLIC_`.
 Do not commit credentials, CA files or secret environment files. No hosted
 service has been provisioned or tested by this configuration change.
 
-Prisma client generation reads `prisma7.config.ts` and the schema, not the
-runtime TLS helper; it requires neither TLS variables nor database connectivity.
+Prisma client generation reads `prisma7.config.ts` and the schema without
+applying the database TLS policy; it requires neither TLS variables nor database
+connectivity.
 `pnpm build` still generates the client before Next.js compilation. Server
 imports validate runtime configuration during the Next.js build, so any TLS
 variables supplied there must be valid; no database connection is opened by
-constructing the adapter. Prisma CLI migrations use a separate connection path
-and need their own verified provider TLS setup before any future migration;
-these runtime variables do not configure the CLI or apply migrations.
+constructing the adapter. Prisma CLI database connections use the separate
+policy entry point below; client generation still opens no connection.
+
+### Secure Prisma CLI migration and status entry point
+
+Use the installed Prisma **7.10.1** CLI through this wrapper:
+
+```bash
+pnpm db:cli migrate status
+pnpm db:cli migrate deploy
+```
+
+These commands enforce production TLS policy even if the invoking shell has no
+`NODE_ENV` or has `NODE_ENV=development`. They read the usual server-only
+`DATABASE_URL`, `DATABASE_SSL_MODE` and `DATABASE_SSL_CA` via the existing dotenv
+convention. Use protected environment configuration and the managed database's
+DNS hostname; never put credentials or PEM text in command arguments.
+
+| Wrapper mode | TLS policy |
+| --- | --- |
+| Default | TLS required, `DATABASE_SSL_MODE` omitted or `verify` |
+| Default with `disable` | Rejected before starting Prisma |
+| `--local`, non-production, loopback host | Omitted or `disable` preserves local plaintext; `verify` requires TLS |
+| `--local` with production or a non-loopback host | Rejected |
+| Any invalid mode or malformed supplied CA | Rejected before connecting |
+
+For the existing local MySQL development database:
+
+```bash
+pnpm db:cli --local migrate status
+# Apply only reviewed pending migrations to the intended local database:
+pnpm db:cli --local migrate deploy
+```
+
+Direct non-TLS local development tooling, including `prisma migrate dev`, remains
+available with a loopback datasource and non-production TLS-disabled settings.
+Direct hosted/production or verified-TLS database commands through
+`prisma7.config.ts` receive no datasource: use the supported wrapper. Do not treat
+`pnpm exec prisma migrate deploy` or hand-built SSL URL parameters as a secure
+hosted migration workflow. The wrapper deliberately supports only noninteractive
+`migrate status` and `migrate deploy`; URL, config and schema overrides are rejected.
+Shadow database connections are not used by these two commands. The internal
+`LIFEOS_PRISMA_DATABASE_URL` exists only in the wrapper's child process; do not
+set it as an application/deployment environment variable.
+
+The shared `databaseTlsPolicy` validates the same modes and X.509 PEM input as
+runtime. Multiline PEM and literal escaped newlines are supported. Runtime keeps
+its existing MariaDB adapter options and Node default CA set. The native Prisma
+CLI instead uses MySQL `sslaccept=strict`, with native certificate-chain and
+hostname verification. With no custom CA it uses the native TLS trust store,
+which can differ from Node's CA set. With `DATABASE_SSL_CA`, the validated PEM is
+provided through a private temporary `sslcert` file. The native TLS connector's
+normal trust roots also remain available; this is not an exclusive-CA pinning
+mechanism. Non-TLS URL query parameters, including repeated parameters, are
+preserved; SSL/TLS overrides are replaced by the selected policy. TLS connections
+force TCP (`prefer_socket=false`) and reject a socket override. Client-identity
+URL options (`sslidentity`/`sslpassword`) are deliberately unsupported.
+
+Certificate files are outside the repository, with owner-only Windows directory
+ACLs or POSIX directory/file modes 0700/0600. They are removed after success,
+failure and handled SIGINT/SIGTERM/exit. An OS crash, power loss or SIGKILL cannot
+run cleanup: use a private temporary location and remove stale
+`lifeos-prisma-tls-*` directories owned by the migration job after confirming no
+job is active. Never commit certificates. If a sandbox prevents private ACLs or
+cleanup, run the migration job in its intended controlled environment; permission
+failures do not trigger a weaker connection.
+
+The wrapper suppresses native CLI output because it can contain datasource/error
+details. It reports completion/failure and only allowlisted Prisma error labels,
+without URLs, credentials, certificate contents or raw native diagnostics. A
+failed status check can also mean pending migrations. Do not assume every failure
+is TLS-related. No automatic retry or plaintext fallback is implemented.
+
+Before applying **any hosted migration**, run the safe status command in the
+intended migration environment, verify the actual provider CA and hostname, and
+review pending migrations through your controlled deployment process. Validate
+failure with an incorrect CA/hostname on an isolated test target. The wrapper
+configuration and unit tests do not establish a managed provider's TLS handshake.
+No hosted migration or managed-database handshake has been performed here.
+The existing local status check has passed with explicit plaintext mode; a
+strict-TLS local status attempt failed and was not retried insecurely. No
+successful certificate-and-hostname TLS handshake is claimed.
+
+The engine parameters were checked against the installed engine commit
+[`d1b3f377ca835d73fd50954a5e22128b9ebdd6b8`](https://github.com/prisma/prisma-engines/blob/d1b3f377ca835d73fd50954a5e22128b9ebdd6b8/quaint/src/connector/mysql/url.rs).
+Recheck connector semantics and rerun the CLI TLS tests when upgrading Prisma.
 
 ## Public authentication deployment
 
