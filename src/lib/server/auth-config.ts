@@ -10,6 +10,7 @@ interface AuthEnvironment {
     BETTER_AUTH_SECRET?: string;
     BETTER_AUTH_TRUSTED_ORIGINS?: string;
     LIFEOS_NEXT_PHASE?: string;
+    VERCEL?: string;
 }
 
 function isLoopbackOrigin(origin: string): boolean {
@@ -79,9 +80,14 @@ export function authOptions(env: AuthEnvironment = process.env) {
             },
             crossSubDomainCookies: { enabled: false },
             trustedProxyHeaders: false,
-            // Enable a client-IP header only after verifying that the deployment
-            // edge overwrites it. Until then, use the shared per-path fallback.
-            ipAddress: { ipAddressHeaders: [] },
+            // Trust only the intended direct-to-Vercel ingress. Missing/invalid
+            // values retain the native shared bucket; never try other headers.
+            // Header overwrite/spoof resistance still requires Preview testing.
+            ipAddress: {
+                ipAddressHeaders: production && env.VERCEL === "1"
+                    ? ["x-vercel-forwarded-for"]
+                    : [],
+            },
             disableCSRFCheck: false,
             disableOriginCheck: false,
         },

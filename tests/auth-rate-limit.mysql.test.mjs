@@ -21,6 +21,7 @@ test("native database limiter shares atomic counters across independent MySQL cl
     const origin = "https://rate-limit.example.invalid";
     const config = authOptions({
         NODE_ENV: "production",
+        VERCEL: "1",
         BETTER_AUTH_URL: origin,
         BETTER_AUTH_SECRET: "Synthetic-Rate-Limit-Test-Secret-ONLY-0123456789",
     });
@@ -30,8 +31,8 @@ test("native database limiter shares atomic counters across independent MySQL cl
     const { rateLimitSafeAdapter } = await import("../src/lib/server/auth-rate-limit-adapter.ts");
     const instances = clients.map((client) => betterAuth({
         ...config,
-        // Fixture-only header. Production deliberately trusts no IP headers.
-        advanced: { ...config.advanced, ipAddress: { ipAddressHeaders: ["x-lifeos-test-ip"] } },
+        // Synthetic platform headers test the configured parser, not whether
+        // Vercel overwrites client-supplied values at its deployed ingress.
         database: rateLimitSafeAdapter(prismaAdapter(client, { provider: "mysql" }), client),
         logger: { disabled: true },
     }));
@@ -55,7 +56,7 @@ test("native database limiter shares atomic counters across independent MySQL cl
             headers: {
                 Origin: origin,
                 "Content-Type": "application/json",
-                "x-lifeos-test-ip": ip,
+                "x-vercel-forwarded-for": ip,
                 ...(cookie ? { Cookie: cookie } : {}),
             },
             ...(method === "POST" ? { body: JSON.stringify(body ?? {}) } : {}),

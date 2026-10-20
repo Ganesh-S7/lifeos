@@ -232,7 +232,7 @@ test("installed Better Auth enforces the configured per-path database rate limit
     }
 });
 
-test("forged forwarding headers cannot obtain new rate-limit buckets", async () => {
+test("outside Vercel, forged forwarding headers cannot obtain new rate-limit buckets", async () => {
     const config = options();
     assert.deepEqual(config.advanced.ipAddress.ipAddressHeaders, []);
     assert.notEqual(config.advanced.ipAddress.disableIpTracking, true);
@@ -337,15 +337,18 @@ test("auth.ts passes the validated configuration to Better Auth with the unchang
     const saved = {
         NODE_ENV: process.env.NODE_ENV,
         BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+        VERCEL: process.env.VERCEL,
     };
     try {
         process.env.NODE_ENV = "production";
+        process.env.VERCEL = "1";
         process.env.BETTER_AUTH_SECRET = syntheticSecret;
         await import(`${authUrl}?auth-config-test`);
         assert.equal(capture.options.baseURL, canonical);
         assert.deepEqual(capture.options.trustedOrigins, [canonical]);
         assert.equal(capture.options.advanced.useSecureCookies, true);
         assert.equal(capture.options.rateLimit.storage, "database");
+        assert.deepEqual(capture.options.advanced.ipAddress.ipAddressHeaders, ["x-vercel-forwarded-for"]);
         assert.deepEqual(capture.adapter, { provider: "mysql" });
     } finally {
         for (const [name, value] of Object.entries(saved)) {

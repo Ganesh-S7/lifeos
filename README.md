@@ -304,17 +304,118 @@ failures/table size without logging keys. The 24-hour retention exceeds every
 current window; reassess it if any future rule exceeds that duration. Use UTC
 synchronized clocks across app and database nodes. Never delete active buckets.
 
-**Client-IP attribution remains a deployment gate.** The installed library's
-default accepts a single-value `X-Forwarded-For`, which is not a verified trust
-boundary here. `advanced.ipAddress.ipAddressHeaders: []` deliberately ignores
-all forwarding headers, without disabling IP tracking or limiting. Production
-uses the library's shared `no-trusted-ip` per-path bucket until a platform-owned,
-edge-overwritten IP header is verified on the deployed Vercel environment.
-This prevents header rotation from bypassing limits, but unrelated users share
-budgets and can block one another. Do not launch publicly with this fallback:
-verify spoofing resistance through the actual ingress, then explicitly configure
-only the proven header. `trustedProxyHeaders: false` protects URL attribution;
-it does not itself secure rate-limiter IP attribution.
+### Vercel client-IP strategy and required Preview verification
+
+When `NODE_ENV=production` and the server-only Vercel system marker is exactly
+`VERCEL=1`, Better Auth uses **only** `x-vercel-forwarded-for`. This includes
+Vercel Preview builds, which run in production mode. The header is selected
+explicitly; there is no fallback to `X-Forwarded-For`, `X-Real-IP`, `Forwarded`,
+Host, forwarded host or protocol. No trusted-proxy chain is configured.
+`trustedProxyHeaders: false` and the separate origin checks remain unchanged.
+
+This strategy assumes direct ingress through Vercel. See Vercel's
+[request-header reference](https://vercel.com/docs/headers/request-headers#x-vercel-forwarded-for)
+and [system environment variables](https://vercel.com/docs/environment-variables/system-environment-variables).
+Ensure Vercel exposes its system variables at runtime. The marker selects a
+platform configuration; it is not cryptographic proof of ingress. Do not set
+`VERCEL=1` on a self-hosted server or assume this strategy stays valid behind
+an added proxy/CDN. Review and verify that topology before enabling IP trust.
+
+Installed Better Auth **1.7.10** trims whitespace, drops empty comma tokens and
+accepts one valid IPv4/IPv6 token. Two or more nonempty tokens (including repeated
+headers combined by `Headers`), an invalid address, or an address with a port
+cannot supply an identity. A value such as `, 192.0.2.1, ,` is therefore accepted
+as one address; a two-address chain is rejected, rather than trusting its
+leftmost value. Native IPv6 normalization retains the default /64 grouping.
+
+**Deliberate fallback:** missing/invalid platform IP information in production
+uses Better Auth's shared `no-trusted-ip` bucket per auth path, with the same
+limits and database enforcement. It never disables limiting or tries another
+header. Visitors without a resolved IP can block each other. Outside the
+production Vercel configuration, no IP headers are trusted. Local development
+keeps rate limiting disabled and its existing cookie behavior.
+
+**Live Vercel verification has NOT been performed.** Synthetic Request tests
+verify parsing, selected counters and fallback only. They cannot prove that
+Vercel overwrites client-supplied headers. Attribution remains a public-launch
+gate until the following checklist passes through the actual HTTPS ingress.
+Do not add a public IP/header diagnostics endpoint or log raw IPs, credentials,
+tokens or request headers to perform this check.
+
+#### Manual HTTPS Preview checklist (pending)
+
+- [ ] Deploy to an HTTPS Vercel Preview with its own test datasource and the
+  rate-limit table already provisioned. Configure the exact Preview origin,
+  secrets and verified MySQL TLS. Confirm `NODE_ENV=production` and the Vercel
+  system marker is exposed. Use direct Vercel ingress without another proxy.
+- [ ] Ensure the test requests reach Better Auth, rather than a Vercel deployment
+  protection login, redirect, challenge or WAF response. Use authorized Preview
+  access without publishing access credentials. Never test the public service.
+- [ ] **A - Network A:** after a quiet window of at least 65 seconds, issue four
+  sign-in attempts rapidly from one real network, using nonexistent credentials
+  (or an authorized disposable account with an intentionally incorrect password).
+  Expect the first three to reach credential validation and the fourth to return
+  Better Auth's HTTP 429 and positive `X-Retry-After`.
+- [ ] **B - Same network, forged headers:** while Network A's bucket is blocked,
+  repeat requests with different forged values for each of `X-Forwarded-For`,
+  `X-Real-IP` and `x-vercel-forwarded-for`, individually and together. Also try a
+  two-address chain and malformed preferred-header value. Every attempt must
+  remain blocked; changing a supplied header must not acquire a fresh budget.
+- [ ] **C - Network B:** before A's window expires, send an attempt from a genuinely
+  different client network (e.g. a different carrier connection, not another
+  device behind the same Wi-Fi/NAT). It must reach credential validation instead
+  of inheriting A's HTTP 429. IPv6 visitors within one /64 share a native bucket.
+- [ ] After expiry, confirm A can again reach credential validation. Record the
+  deployment identifier, time, network labels, response statuses and retry delays
+  only. Keep IP/header data and credentials out of the report.
+- [ ] Record actual observations and mark attribution verified only if A, B and C
+  all pass. Any header-based bypass, unexpected cross-network blocking, missing
+  marker, redirect or ambiguous response leaves this launch gate open. Investigate
+  the deployed ingress and platform settings without weakening the limits.
+
+Example for PowerShell 7 on the two client networks (no request/header dumps):
+
+```powershell
+$previewOrigin = 'https://YOUR-PREVIEW.vercel.app'
+$invalidCredentials = @{
+    email = 'lifeos-ip-check@example.invalid'
+    password = 'Synthetic-Invalid-Password-ONLY-1234!'
+} | ConvertTo-Json
+
+function Invoke-PreviewIpCheck {
+    param([hashtable]$ExtraHeaders = @{})
+    $headers = @{ Origin = $previewOrigin }
+    foreach ($name in $ExtraHeaders.Keys) {
+        $headers[$name] = $ExtraHeaders[$name]
+    }
+    $response = Invoke-WebRequest -Method Post -SkipHttpErrorCheck `
+        -Uri "$previewOrigin/api/auth/sign-in/email" `
+        -ContentType 'application/json' -Headers $headers -Body $invalidCredentials
+    [pscustomobject]@{
+        Status = [int]$response.StatusCode
+        RetryAfter = $response.Headers['X-Retry-After']
+    }
+}
+
+# A: run once from Network A, after the quiet window.
+1..4 | ForEach-Object { Invoke-PreviewIpCheck }
+
+# B: run from Network A immediately after A; these must remain blocked.
+1..4 | ForEach-Object {
+    Invoke-PreviewIpCheck -ExtraHeaders @{
+        'X-Forwarded-For' = "192.0.2.$_"
+        'X-Real-IP' = "198.51.100.$_"
+        'x-vercel-forwarded-for' = "203.0.113.$_"
+    }
+}
+# Also repeat with each header alone, then malformed/multi-value preferred headers.
+
+# C: on Network B, define the same function and issue one attempt during A's block.
+Invoke-PreviewIpCheck
+```
+
+The script sends synthetic invalid credentials and prints only status/retry data;
+it does not establish real ingress behavior until run against the Preview.
 
 Local integration check (requires generated client and the migration on a
 loopback MySQL datasource; the test never applies migrations):
@@ -325,7 +426,8 @@ node --experimental-transform-types --test tests/auth-rate-limit.mysql.test.mjs
 Remove-Item Env:LIFEOS_TEST_MYSQL_RATE_LIMIT
 ```
 
-It uses two independent Prisma pools/auth instances, tests all configured paths,
+It supplies synthetic `x-vercel-forwarded-for` values to two independent Prisma
+pools/auth instances, tests all configured paths,
 100-request default, concurrent creation/increment/renewal and native cleanup,
 verifies signup/login/session/logout across clients, and deletes its disposable
 user and synthetic counters in `finally`. It is explicitly skipped in
