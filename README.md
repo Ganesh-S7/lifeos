@@ -61,6 +61,37 @@ the built application serves the fonts locally afterward. An offline build
 has not been established. Production builds must finish successfully before
 running `pnpm start`; an interrupted compile is not a successful build.
 
+## Custom mutation request origins
+
+Finance and Health mutations require an authenticated session and a trusted
+browser origin. Set server-only `BETTER_AUTH_URL` to the canonical application
+origin, including scheme and any non-default port (for local development,
+`http://localhost:3000`). There is no implicit localhost or request-host fallback;
+missing or invalid canonical configuration rejects authenticated mutations in
+every environment, including production.
+
+Additional origins reuse Better Auth's existing `BETTER_AUTH_TRUSTED_ORIGINS`
+environment variable: a comma-separated list of exact HTTP(S) origins, with no
+spaces, empty entries, wildcards, credentials, paths, queries or fragments.
+For example: `https://app.example.com,https://preview.example.com`.
+An optional root `/` is accepted, and URL normalization handles hostname case
+and default ports. Invalid entries reject the entire custom mutation policy.
+Preview and alternate origins must be explicitly listed; configuring them does
+not enable CORS or change cookies. Better Auth retains its own validation rules.
+
+Custom mutations require an allowlisted `Origin`, or a valid HTTP(S) `Referer`
+with an allowlisted origin only when `Origin` is absent. A present invalid,
+untrusted or `null` Origin never falls back to Referer. Missing both headers is
+rejected. `Sec-Fetch-Site: cross-site` and unrecognized values of that header are rejected
+even for allowlisted origins; `same-site` alone never establishes trust.
+Host and proxy-forwarded headers are never used to build the allowlist.
+
+Origin rejection returns a private, non-cacheable HTTP 403 `UNTRUSTED_ORIGIN`
+without exposing the allowlist. Authentication still runs first, so signed-out
+requests retain HTTP 401. Read-only endpoints need no Origin header. Non-browser
+clients using these session-based mutations must supply trusted origin evidence;
+future headerless server-to-server access needs separate authentication.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
