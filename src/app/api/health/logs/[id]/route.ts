@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { errorDiagnostics } from "@/lib/server/error-diagnostics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,7 +72,7 @@ export async function DELETE(
             message: "Health log deleted successfully.",
         });
     } catch (error) {
-        console.error("[DELETE /api/health/logs/[id]]", error);
+        console.error("[DELETE /api/health/logs/[id]]", errorDiagnostics(error));
 
         return jsonNoStore(
             {

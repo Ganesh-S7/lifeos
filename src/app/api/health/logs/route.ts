@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { errorDiagnostics } from "@/lib/server/error-diagnostics";
 import { formatUtcDateValue } from "@/lib/utils/date";
 import type { HealthLog as HealthLogDto } from "@/features/health/types/health";
 
@@ -265,7 +266,7 @@ export async function POST(request: Request) {
             );
         }
 
-        console.error("[POST /api/health/logs]", error);
+        console.error("[POST /api/health/logs]", errorDiagnostics(error));
 
         return jsonNoStore(
             {

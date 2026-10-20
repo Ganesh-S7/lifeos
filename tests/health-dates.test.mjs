@@ -73,6 +73,13 @@ if (process.env.LIFEOS_HEALTH_DATE_TEST_CHILD !== "1") {
                 return nextResolve(dateUrl, context);
             }
 
+            if (specifier === "@/lib/server/error-diagnostics") {
+                return nextResolve(
+                    new URL("../src/lib/server/error-diagnostics.ts", import.meta.url).href,
+                    context,
+                );
+            }
+
             return nextResolve(specifier, context);
         },
     });

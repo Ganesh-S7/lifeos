@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { errorDiagnostics } from "@/lib/server/error-diagnostics";
 import { formatUtcDateValue } from "@/lib/utils/date";
 
 import type {
@@ -146,7 +147,7 @@ export async function GET(request: Request) {
             targets,
         });
     } catch (error) {
-        console.error("[GET /api/health]", error);
+        console.error("[GET /api/health]", errorDiagnostics(error));
 
         return jsonNoStore(
             {

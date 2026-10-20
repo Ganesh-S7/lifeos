@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { errorDiagnostics } from "@/lib/server/error-diagnostics";
 import type { HealthTargets as HealthTargetsDto } from "@/features/health/types/health";
 
 export const runtime = "nodejs";
@@ -190,7 +191,7 @@ export async function PUT(request: Request) {
             targets: toHealthTargetsDto(savedTargets),
         });
     } catch (error) {
-        console.error("[PUT /api/health/targets]", error);
+        console.error("[PUT /api/health/targets]", errorDiagnostics(error));
 
         return jsonNoStore(
             {
@@ -231,7 +232,7 @@ export async function DELETE(request: Request) {
             targets: null,
         });
     } catch (error) {
-        console.error("[DELETE /api/health/targets]", error);
+        console.error("[DELETE /api/health/targets]", errorDiagnostics(error));
 
         return jsonNoStore(
             {

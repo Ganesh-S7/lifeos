@@ -37,6 +37,12 @@ registerHooks({
             if (specifier === "@/features/finance/server/finance-read") {
                 return nextResolve(readModuleUrl, context);
             }
+            if (specifier === "@/lib/server/error-diagnostics") {
+                return nextResolve(
+                    new URL("../src/lib/server/error-diagnostics.ts", import.meta.url).href,
+                    context,
+                );
+            }
             if (specifier === "next/server") {
                 return nextResolve("next/server.js", context);
             }
@@ -270,7 +276,7 @@ test("an empty identity fails closed before any database read", async () => {
     assert.equal(database.transactions.length, 0);
 });
 
-test("authentication failures return a generic no-store 500 and log server details", async (context) => {
+test("authentication failures return a generic no-store 500 and redact diagnostics", async (context) => {
     const database = authenticated();
     const failure = new Error("Private authentication diagnostic");
     dependencies.getSession = async () => { throw failure; };
@@ -281,7 +287,13 @@ test("authentication failures return a generic no-store 500 and log server detai
         error: "INTERNAL_SERVER_ERROR", message: "Unable to load your finance data.",
     });
     assert.equal(database.calls.length, 0);
-    assert.deepEqual(logger.mock.calls[0].arguments, ["[GET /api/finance]", failure]);
+    assert.deepEqual(logger.mock.calls[0].arguments, [
+        "[GET /api/finance]", { errorClass: "Error" },
+    ]);
+    assert.doesNotMatch(
+        JSON.stringify(logger.mock.calls[0].arguments),
+        /Private authentication diagnostic|stack/,
+    );
 });
 
 test("database failures return no partial data or private diagnostics", async (context) => {

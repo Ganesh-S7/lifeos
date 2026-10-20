@@ -85,8 +85,7 @@ for (const resource of Object.keys(routes)) {
             assert.deepEqual(result, { status: 409, body: conflictBody });
             assert.equal(warnings.length, 1);
             assert.deepEqual(warnings[0][1], {
-                errorClass: "PrismaClientKnownRequestError", prismaCode: "P2034", clientVersion: "7.10.1",
-                driverCode: "1213", driverKind: "TransactionWriteConflict",
+                errorClass: "PrismaClientKnownRequestError", prismaCode: "P2034",
             });
             assert.doesNotMatch(JSON.stringify(warnings), /confidential|Sensitive|SQL|parameters|originalMessage/);
         });
