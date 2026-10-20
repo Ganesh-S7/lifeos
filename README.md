@@ -92,6 +92,79 @@ requests retain HTTP 401. Read-only endpoints need no Origin header. Non-browser
 clients using these session-based mutations must supply trusted origin evidence;
 future headerless server-to-server access needs separate authentication.
 
+## MySQL TLS configuration
+
+The runtime Prisma MariaDB adapter receives TLS options directly; SSL query
+parameters in `DATABASE_URL` do not configure this application. Keep the provider's
+DNS hostname in that URL so it can be checked against the server certificate.
+The pool limit remains five connections per application process.
+
+| Environment | `DATABASE_SSL_MODE` | Behavior |
+| --- | --- | --- |
+| Non-production | omitted or `disable` | TLS disabled, preserving local MySQL defaults |
+| Non-production | `verify` | TLS with certificate-chain and hostname verification |
+| Production | omitted or `verify` | TLS with certificate-chain and hostname verification |
+| Production | `disable` | Configuration error; no adapter is created |
+| Any | any other value, including an empty string | Configuration error |
+
+`verify` is the only TLS-enabled mode; there is no encryption-only or
+trust-all mode. The adapter always passes `rejectUnauthorized: true` for TLS
+and leaves the connector's default hostname verifier enabled. Changing a URL
+query parameter cannot turn these checks off. Fix a certificate or hostname
+error rather than disabling verification.
+
+`DATABASE_SSL_CA` is optional for providers using a CA trusted by Node.js.
+When omitted in verified mode, the adapter explicitly supplies Node's current
+default CA set using the pinned Node runtime. This also prevents the installed
+connector from switching to its MariaDB-specific fingerprint authentication
+fallback. The adapter does not override the expected hostname or identity check.
+
+For a custom CA, supply the complete PEM certificate or certificate bundle as
+`DATABASE_SSL_CA`, including every `BEGIN CERTIFICATE` / `END CERTIFICATE` line.
+Real multiline values and literal `\n` or `\r\n` sequences are supported.
+Certificates are parsed as X.509 before adapter creation; malformed, empty or
+mixed-content bundles fail with a generic configuration error. No certificate
+contents are logged. A supplied bundle replaces the default trust set for this
+connection; it is not a certificate-file path or a client private key.
+Supplying a CA while TLS is disabled also fails, rather than ignoring it.
+PEM validation does not prove a live server's identity; the connection handshake
+still must validate the chain, validity period and hostname.
+
+To test verified TLS locally, use a TLS-capable test MySQL server, set
+`DATABASE_SSL_MODE=verify`, and provide `DATABASE_SSL_CA` if its CA is not already
+trusted. Leave both variables unset for the current local MySQL setup.
+
+### Aiven and Vercel setup, when provisioned
+
+Aiven MySQL's documented `VERIFY_CA` and `VERIFY_IDENTITY` modes require the
+**Aiven project CA certificate**. For this application, configure that project
+CA in `DATABASE_SSL_CA` and use `verify` (which retains hostname verification).
+Download the CA from the service's **Overview → Connection information →
+CA Certificate → Download**. During CA rotation, use the current provider bundle
+and update it before the old CA stops being accepted. See
+[Aiven certificate requirements and download instructions](https://aiven.io/docs/platform/concepts/tls-ssl-certificates).
+
+Later, in Vercel Project Settings → Environment Variables, configure the
+environment-specific `DATABASE_URL`, set `DATABASE_SSL_MODE=verify` (or omit it
+for the production default), and paste the complete provider PEM bundle into
+`DATABASE_SSL_CA`. Scope values to the intended deployment environments and
+redeploy after changing them. Do not put certificate files in Git or use a
+developer's Windows certificate path. See
+[Vercel environment variables](https://vercel.com/docs/environment-variables).
+
+All database variables are server-only and must never use `NEXT_PUBLIC_`.
+Do not commit credentials, CA files or secret environment files. No hosted
+service has been provisioned or tested by this configuration change.
+
+Prisma client generation reads `prisma7.config.ts` and the schema, not the
+runtime TLS helper; it requires neither TLS variables nor database connectivity.
+`pnpm build` still generates the client before Next.js compilation. Server
+imports validate runtime configuration during the Next.js build, so any TLS
+variables supplied there must be valid; no database connection is opened by
+constructing the adapter. Prisma CLI migrations use a separate connection path
+and need their own verified provider TLS setup before any future migration;
+these runtime variables do not configure the CLI or apply migrations.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
