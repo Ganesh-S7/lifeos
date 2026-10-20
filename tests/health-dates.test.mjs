@@ -1,4 +1,5 @@
 import "./helpers/register-typescript.mjs";
+import { sameOriginHeaders } from "./helpers/mutation-request.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
@@ -73,9 +74,9 @@ if (process.env.LIFEOS_HEALTH_DATE_TEST_CHILD !== "1") {
                 return nextResolve(dateUrl, context);
             }
 
-            if (specifier === "@/lib/server/error-diagnostics") {
+            if (["@/lib/server/error-diagnostics", "@/lib/server/request-origin"].includes(specifier)) {
                 return nextResolve(
-                    new URL("../src/lib/server/error-diagnostics.ts", import.meta.url).href,
+                    new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href,
                     context,
                 );
             }
@@ -166,7 +167,10 @@ if (process.env.LIFEOS_HEALTH_DATE_TEST_CHILD !== "1") {
     );
 
     globalThis.fetch = async (url, init) => {
-        const request = new Request(`http://localhost${url}`, init);
+        const request = new Request(`http://localhost${url}`, {
+            ...init,
+            headers: init.method === "GET" ? init.headers : sameOriginHeaders(init.headers),
+        });
         const response = init.method === "POST" ? await POST(request) : await GET(request);
         assert.equal(response.headers.get("cache-control"), "private, no-store");
         return response;
@@ -227,7 +231,7 @@ if (process.env.LIFEOS_HEALTH_DATE_TEST_CHILD !== "1") {
             const before = databaseCalls;
             const response = await POST(new Request("http://localhost/api/health/logs", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: sameOriginHeaders({ "Content-Type": "application/json" }),
                 body: JSON.stringify({ date, steps: 4000 }),
             }));
             assert.equal(response.status, 400, date);

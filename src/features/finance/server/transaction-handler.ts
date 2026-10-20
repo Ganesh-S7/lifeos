@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validateMutationOrigin } from "../../../lib/server/request-origin";
 import { financeConcurrencyError, financeMutationDiagnostics } from "./finance-concurrency";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -29,6 +30,11 @@ export async function handleTransactionMutation(
         if (!session) {
             return jsonNoStore({ error: "UNAUTHORIZED", message: "Please sign in to manage your finance data." }, 401);
         }
+        const originError = validateMutationOrigin(request);
+        if (originError) {
+            return originError;
+        }
+
         const parsedParams = kind === "create" ? null : financeRecordParamsSchema.safeParse(await params);
         if (parsedParams && !parsedParams.success) {
             return jsonNoStore({

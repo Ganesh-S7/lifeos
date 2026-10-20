@@ -1,4 +1,5 @@
 import "./helpers/register-typescript.mjs";
+import { sameOriginHeaders } from "./helpers/mutation-request.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { registerHooks } from "node:module";
@@ -65,7 +66,7 @@ function databaseError(code = "P2034") {
 async function request(resource, method, body = bodies[resource]) {
     const req = new Request(`http://localhost/api/finance/${resource}/owned`, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: sameOriginHeaders({ "Content-Type": "application/json" }),
         ...(method !== "DELETE" ? { body: JSON.stringify(body) } : {}),
     });
     const response = method === "POST"

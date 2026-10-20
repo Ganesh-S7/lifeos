@@ -1,4 +1,5 @@
 import "./helpers/register-typescript.mjs";
+import { sameOriginHeaders } from "./helpers/mutation-request.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { registerHooks } from "node:module";
@@ -44,7 +45,7 @@ function setup(initial = records(), settings) {
 async function request(method, input = income, id = "owned", raw = false) {
     const req = new Request(`http://localhost/api/finance/transactions/${id}?userId=foreign`, {
         method,
-        headers: { "Content-Type": "application/json", Cookie: "test-session" },
+        headers: sameOriginHeaders({ "Content-Type": "application/json", Cookie: "test-session" }),
         ...(method !== "DELETE" ? { body: raw ? input : JSON.stringify(input) } : {}),
     });
     const response = method === "POST" ? await collectionRoute.POST(req)

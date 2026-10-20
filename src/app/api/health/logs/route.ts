@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateMutationOrigin } from "@/lib/server/request-origin";
 import { errorDiagnostics } from "@/lib/server/error-diagnostics";
 import { formatUtcDateValue } from "@/lib/utils/date";
 import type { HealthLog as HealthLogDto } from "@/features/health/types/health";
@@ -102,6 +103,11 @@ export async function POST(request: Request) {
         }
 
         const userId = session.user.id;
+
+        const originError = validateMutationOrigin(request);
+        if (originError) {
+            return originError;
+        }
 
         // 2. Parse and validate the request body.
         const body: unknown = await request

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateMutationOrigin } from "@/lib/server/request-origin";
 import { errorDiagnostics } from "@/lib/server/error-diagnostics";
 import type { HealthTargets as HealthTargetsDto } from "@/features/health/types/health";
 
@@ -134,6 +135,11 @@ export async function PUT(request: Request) {
 
         const userId = session.user.id;
 
+        const originError = validateMutationOrigin(request);
+        if (originError) {
+            return originError;
+        }
+
         // 2. Validate the request body.
         const body: unknown = await request.json().catch(() => null);
         const parsed = healthTargetsSchema.safeParse(body);
@@ -218,6 +224,11 @@ export async function DELETE(request: Request) {
                 },
                 401,
             );
+        }
+
+        const originError = validateMutationOrigin(request);
+        if (originError) {
+            return originError;
         }
 
         // 2. Delete only this user's targets.

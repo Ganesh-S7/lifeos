@@ -1,4 +1,5 @@
 import "./helpers/register-typescript.mjs";
+import { sameOriginHeaders } from "./helpers/mutation-request.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { registerHooks } from "node:module";
@@ -193,8 +194,8 @@ const operations = [
 async function invoke(operation, body = operation.body, id = "synthetic-log") {
     const request = new Request(`http://localhost${operation.path}`, {
         method: operation.method,
+        headers: sameOriginHeaders(body ? { "Content-Type": "application/json" } : {}),
         ...(body ? {
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
         } : {}),
     });

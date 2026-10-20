@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateMutationOrigin } from "@/lib/server/request-origin";
 import { errorDiagnostics } from "@/lib/server/error-diagnostics";
 
 export const runtime = "nodejs";
@@ -34,6 +35,11 @@ export async function DELETE(
                 },
                 401,
             );
+        }
+
+        const originError = validateMutationOrigin(request);
+        if (originError) {
+            return originError;
         }
 
         // 2. Resolve and validate the record ID.
