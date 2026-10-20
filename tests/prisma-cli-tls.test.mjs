@@ -221,3 +221,92 @@ test("Prisma config rejects an insecure injected internal URL before starting an
         }
     }
 });
+
+
+test("read-only check uses verified preparation and fixed SQL, with safe output and cleanup", async () => {
+    for (const outcome of [0, 1, "P1011", "P1000", "P9999", "spawn-error", "stdin-error", "signal"]) {
+        const reports = [];
+        let launches = 0;
+        let caPath;
+        let sql = "";
+        const result = await runPrismaDatabaseCommand(["check"], {
+            env: { ...environment, DATABASE_SSL_MODE: "verify", DATABASE_SSL_CA: certificate },
+            report: (message) => reports.push(message),
+            launch(executable, args, options) {
+                launches++;
+                assert.equal(executable, process.execPath);
+                assert.deepEqual(args.slice(1, 4), ["db", "execute", "--stdin"]);
+                assert.equal(args.length, 6);
+                assert.equal(args[4], "--config");
+                assert.ok(args[5].endsWith("prisma7.config.ts"));
+                assert.deepEqual(options.stdio, ["pipe", "pipe", "pipe"]);
+                const url = new URL(options.env.LIFEOS_PRISMA_DATABASE_URL);
+                assert.equal(url.searchParams.get("sslaccept"), "strict");
+                assert.equal(url.searchParams.get("prefer_socket"), "false");
+                assert.equal(options.env.DATABASE_URL, options.env.LIFEOS_PRISMA_DATABASE_URL);
+                assert.equal(options.env.DATABASE_SSL_CA, undefined);
+                assert.equal(options.env.SHADOW_DATABASE_URL, undefined);
+                caPath = url.searchParams.get("sslcert");
+                assert.equal(readFileSync(caPath, "utf8"), certificate.trim() + "\n");
+                const child = new EventEmitter();
+                child.stdout = new PassThrough();
+                child.stderr = new PassThrough();
+                child.stdin = new PassThrough();
+                child.stdin.on("data", (chunk) => {
+                    sql += chunk;
+                });
+                child.kill = () => queueMicrotask(() => child.emit("close", null));
+                queueMicrotask(() => {
+                    child.stdout.write(`${databaseUrl}\n${certificate}`);
+                    child.stderr.write(`${outcome}: synthetic-password database.example.invalid`);
+                    if (outcome === "spawn-error") {
+                        child.emit("error", new Error(databaseUrl));
+                    } else if (outcome === "stdin-error") {
+                        child.stdin.emit("error", new Error(databaseUrl));
+                    } else if (outcome === "signal") {
+                        process.emit("SIGTERM");
+                    } else {
+                        child.emit("close", outcome === 0 ? 0 : 1);
+                    }
+                });
+                return child;
+            },
+        });
+        assert.equal(sql, "SELECT 1;\n");
+        assert.equal(launches, 1);
+        assert.equal(result, outcome === 0 ? 0 : outcome === "signal" ? 130 : 1);
+        assert.equal(existsSync(caPath), false);
+        assert.equal(existsSync(dirname(caPath)), false);
+        const expected = outcome === 0
+            ? "Prisma connection check succeeded (verified TLS; SELECT 1)."
+            : `Prisma connection check failed (${["P1011", "P1000"].includes(outcome) ? outcome : "CHECK_FAILED"}).`;
+        assert.deepEqual(reports, [expected]);
+    }
+});
+
+test("check rejects insecure configuration and SQL or local overrides before launching", async () => {
+    for (const args of [["--local", "check"], ["check", "--file", "query.sql"], ["check", "SELECT 2"]]) {
+        assert.equal(await runPrismaDatabaseCommand(args, {
+            env: environment,
+            launch() {
+                assert.fail("Must not launch");
+            },
+            report() {},
+        }), 1);
+    }
+    for (const overrides of [
+        { DATABASE_SSL_MODE: "disable" },
+        { DATABASE_SSL_CA: "SECRET_NOT_PEM" },
+        { DATABASE_URL: "SECRET_NOT_URL" },
+    ]) {
+        const reports = [];
+        assert.equal(await runPrismaDatabaseCommand(["check"], {
+            env: { ...environment, ...overrides },
+            launch() {
+                assert.fail("Must not launch");
+            },
+            report: (message) => reports.push(message),
+        }), 1);
+        assert.deepEqual(reports, ["Prisma connection check failed (CONFIGURATION_REJECTED)."]);
+    }
+});

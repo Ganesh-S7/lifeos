@@ -213,9 +213,9 @@ Direct hosted/production or verified-TLS database commands through
 `prisma7.config.ts` receive no datasource: use the supported wrapper. Do not treat
 `pnpm exec prisma migrate deploy` or hand-built SSL URL parameters as a secure
 hosted migration workflow. The wrapper deliberately supports only noninteractive
-`migrate status` and `migrate deploy`; URL, config and schema overrides are rejected.
-Shadow database connections are not used by these two commands. The internal
-`LIFEOS_PRISMA_DATABASE_URL` exists only in the wrapper's child process; do not
+`check`, `migrate status` and `migrate deploy`; URL, config and schema overrides
+are rejected. Shadow database connections are not used by these commands.
+The internal `LIFEOS_PRISMA_DATABASE_URL` exists only in the wrapper's child process; do not
 set it as an application/deployment environment variable.
 
 The shared `databaseTlsPolicy` validates the same modes and X.509 PEM input as
@@ -245,6 +245,32 @@ details. It reports completion/failure and only allowlisted Prisma error labels,
 without URLs, credentials, certificate contents or raw native diagnostics. A
 failed status check can also mean pending migrations. Do not assume every failure
 is TLS-related. No automatic retry or plaintext fallback is implemented.
+
+To test the first connection independently of migration history, run this in
+the PowerShell session containing your database URL, TLS mode and CA settings:
+
+```powershell
+pnpm db:cli check
+$LASTEXITCODE
+```
+
+This uses the same secure connection preparation and Prisma configuration,
+executing only the fixed `SELECT 1;` through Prisma 7's `db execute --stdin`.
+It does not read or create the migration table, apply migrations or change data.
+`--local` and arbitrary SQL/options are not accepted for this check.
+
+Exit 0 with `Prisma connection check succeeded (verified TLS; SELECT 1).` means
+the query completed with certificate-chain and hostname verification enabled.
+It does not mean migrations have been applied. Exit 1 means the check failed;
+only an allowlisted Prisma code, `CONFIGURATION_REJECTED`, or `CHECK_FAILED`
+is reported. The last category is deliberately inconclusive, not a TLS diagnosis.
+Native diagnostics and connection details remain suppressed. Private CA files
+are cleaned up using the existing wrapper lifecycle, without insecure retries.
+
+In the installed Prisma 7.10.1 CLI, `migrate status` also exits 1 when the database
+is behind local migrations or has no migration table, after inspecting migration
+history successfully. Thus an initial empty database can explain status exit 1;
+only a successful independent check establishes verified connectivity here.
 
 Before applying **any hosted migration**, run the safe status command in the
 intended migration environment, verify the actual provider CA and hostname, and
