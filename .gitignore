@@ -47,3 +47,6 @@ next-env.d.ts
 /.agents/skills/
 /.claude/skills/
 /.windsurf/skills/
+
+.vercel
+.env*
