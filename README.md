@@ -2,6 +2,14 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+Use Node.js **22.23.3**, pinned in `.nvmrc`, and **pnpm 10.10.0**, declared
+in `package.json`. With nvm installed, run `nvm install` and `nvm use` (or
+`nvm install 22.23.3` and `nvm use 22.23.3` with nvm-windows).
+The `engines` range permits compatible Node 22 patches from this baseline;
+it does not install or select Node. Configure CI to use `.nvmrc` explicitly.
+
+Install the locked dependencies with `pnpm install --frozen-lockfile`.
+
 First, run the development server:
 
 ```bash
@@ -19,6 +27,610 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Production build
+
+```bash
+pnpm build
+pnpm start
+```
+
+`pnpm build` runs this exact command:
+
+```bash
+prisma generate --config prisma7.config.ts && next build --webpack
+```
+
+Production builds explicitly use Webpack, supported by the installed Next.js
+**16.3.8** CLI. The current default Turbopack build fails during CSS-worker
+startup, including outside the restricted sandbox; the Webpack production
+build has passed. This is a verified build-path workaround, not a fix for the
+underlying Turbopack issue.
+
+A Prisma generation failure stops compilation. This explicit sequence
+does not depend on install hooks or automatic pre/post-script execution.
+The generated client in `src/generated/prisma` is intentionally ignored by
+Git, so build environments must install development dependencies, including
+the Prisma CLI. Do not rely on a previously generated local client.
+
+Client generation reads the schema and writes generated code; it does not
+apply migrations, seed records, or connect to MySQL. Database migrations are
+a separate, controlled deployment step and are not part of `pnpm build`.
+
+The server modules validate `DATABASE_URL` and `BETTER_AUTH_SECRET` when
+imported. Provide them through protected build and runtime environment
+configuration, along with the environment-specific `BETTER_AUTH_URL` (HTTPS
+in production). Never use `NEXT_PUBLIC_` for credentials or auth secrets, and
+never commit secret environment files. These requirements come from server
+initialization, not Prisma client generation. `SHADOW_DATABASE_URL` belongs
+to development migration tooling and is not required for generation or the
+production runtime.
+
+The current `next/font/google` imports download Geist fonts during the build.
+Build workers need HTTPS access to Google Fonts and its font-file hosts;
+the built application serves the fonts locally afterward. An offline build
+has not been established. Production builds must finish successfully before
+running `pnpm start`; an interrupted compile is not a successful build.
+
+## Custom mutation request origins
+
+Finance and Health mutations require an authenticated session and a trusted
+browser origin. Set server-only `BETTER_AUTH_URL` to the canonical application
+origin, including scheme and any non-default port (for local development,
+`http://localhost:3000`). There is no implicit localhost or request-host fallback;
+missing or invalid canonical configuration rejects authenticated mutations in
+every environment, including production.
+
+Additional origins reuse Better Auth's existing `BETTER_AUTH_TRUSTED_ORIGINS`
+environment variable: a comma-separated list of exact HTTP(S) origins, with no
+spaces, empty entries, wildcards, credentials, paths, queries or fragments.
+For example: `https://app.example.com,https://preview.example.com`.
+An optional root `/` is accepted, and URL normalization handles hostname case
+and default ports. Invalid entries reject the entire custom mutation policy.
+Preview and alternate origins must be explicitly listed; configuring them does
+not enable CORS or change cookies. Better Auth retains its own validation rules.
+
+Custom mutations require an allowlisted `Origin`, or a valid HTTP(S) `Referer`
+with an allowlisted origin only when `Origin` is absent. A present invalid,
+untrusted or `null` Origin never falls back to Referer. Missing both headers is
+rejected. `Sec-Fetch-Site: cross-site` and unrecognized values of that header are rejected
+even for allowlisted origins; `same-site` alone never establishes trust.
+Host and proxy-forwarded headers are never used to build the allowlist.
+
+Origin rejection returns a private, non-cacheable HTTP 403 `UNTRUSTED_ORIGIN`
+without exposing the allowlist. Authentication still runs first, so signed-out
+requests retain HTTP 401. Read-only endpoints need no Origin header. Non-browser
+clients using these session-based mutations must supply trusted origin evidence;
+future headerless server-to-server access needs separate authentication.
+
+## MySQL TLS configuration
+
+The runtime Prisma MariaDB adapter receives TLS options directly; SSL query
+parameters in `DATABASE_URL` do not configure this application. Keep the provider's
+DNS hostname in that URL so it can be checked against the server certificate.
+The pool limit remains five connections per application process.
+
+| Environment | `DATABASE_SSL_MODE` | Behavior |
+| --- | --- | --- |
+| Non-production | omitted or `disable` | TLS disabled, preserving local MySQL defaults |
+| Non-production | `verify` | TLS with certificate-chain and hostname verification |
+| Production | omitted or `verify` | TLS with certificate-chain and hostname verification |
+| Production | `disable` | Configuration error; no adapter is created |
+| Any | any other value, including an empty string | Configuration error |
+
+`verify` is the only TLS-enabled mode; there is no encryption-only or
+trust-all mode. The adapter always passes `rejectUnauthorized: true` for TLS
+and leaves the connector's default hostname verifier enabled. Changing a URL
+query parameter cannot turn these checks off. Fix a certificate or hostname
+error rather than disabling verification.
+
+`DATABASE_SSL_CA` is optional for providers using a CA trusted by Node.js.
+When omitted in verified mode, the adapter explicitly supplies Node's current
+default CA set using the pinned Node runtime. This also prevents the installed
+connector from switching to its MariaDB-specific fingerprint authentication
+fallback. The adapter does not override the expected hostname or identity check.
+
+For a custom CA, supply the complete PEM certificate or certificate bundle as
+`DATABASE_SSL_CA`, including every `BEGIN CERTIFICATE` / `END CERTIFICATE` line.
+Real multiline values and literal `\n` or `\r\n` sequences are supported.
+Certificates are parsed as X.509 before adapter creation; malformed, empty or
+mixed-content bundles fail with a generic configuration error. No certificate
+contents are logged. A supplied bundle replaces the default trust set for this
+connection; it is not a certificate-file path or a client private key.
+Supplying a CA while TLS is disabled also fails, rather than ignoring it.
+PEM validation does not prove a live server's identity; the connection handshake
+still must validate the chain, validity period and hostname.
+
+To test verified TLS locally, use a TLS-capable test MySQL server, set
+`DATABASE_SSL_MODE=verify`, and provide `DATABASE_SSL_CA` if its CA is not already
+trusted. Leave both variables unset for the current local MySQL setup.
+
+### Aiven and Vercel setup, when provisioned
+
+Aiven MySQL's documented `VERIFY_CA` and `VERIFY_IDENTITY` modes require the
+**Aiven project CA certificate**. For this application, configure that project
+CA in `DATABASE_SSL_CA` and use `verify` (which retains hostname verification).
+Download the CA from the service's **Overview → Connection information →
+CA Certificate → Download**. During CA rotation, use the current provider bundle
+and update it before the old CA stops being accepted. See
+[Aiven certificate requirements and download instructions](https://aiven.io/docs/platform/concepts/tls-ssl-certificates).
+
+Later, in Vercel Project Settings → Environment Variables, configure the
+environment-specific `DATABASE_URL`, set `DATABASE_SSL_MODE=verify` (or omit it
+for the production default), and paste the complete provider PEM bundle into
+`DATABASE_SSL_CA`. Scope values to the intended deployment environments and
+redeploy after changing them. Do not put certificate files in Git or use a
+developer's Windows certificate path. See
+[Vercel environment variables](https://vercel.com/docs/environment-variables).
+
+All database variables are server-only and must never use `NEXT_PUBLIC_`.
+Do not commit credentials, CA files or secret environment files. No hosted
+service has been provisioned or tested by this configuration change.
+
+Prisma client generation reads `prisma7.config.ts` and the schema without
+applying the database TLS policy; it requires neither TLS variables nor database
+connectivity.
+`pnpm build` still generates the client before Next.js compilation. Server
+imports validate runtime configuration during the Next.js build, so any TLS
+variables supplied there must be valid; no database connection is opened by
+constructing the adapter. Prisma CLI database connections use the separate
+policy entry point below; client generation still opens no connection.
+
+### Secure Prisma CLI migration and status entry point
+
+Use the installed Prisma **7.10.1** CLI through this wrapper:
+
+```bash
+pnpm db:cli migrate status
+pnpm db:cli migrate deploy
+```
+
+These commands enforce production TLS policy even if the invoking shell has no
+`NODE_ENV` or has `NODE_ENV=development`. They read the usual server-only
+`DATABASE_URL`, `DATABASE_SSL_MODE` and `DATABASE_SSL_CA` via the existing dotenv
+convention. Use protected environment configuration and the managed database's
+DNS hostname; never put credentials or PEM text in command arguments.
+
+| Wrapper mode | TLS policy |
+| --- | --- |
+| Default | TLS required, `DATABASE_SSL_MODE` omitted or `verify` |
+| Default with `disable` | Rejected before starting Prisma |
+| `--local`, non-production, loopback host | Omitted or `disable` preserves local plaintext; `verify` requires TLS |
+| `--local` with production or a non-loopback host | Rejected |
+| Any invalid mode or malformed supplied CA | Rejected before connecting |
+
+For the existing local MySQL development database:
+
+```bash
+pnpm db:cli --local migrate status
+# Apply only reviewed pending migrations to the intended local database:
+pnpm db:cli --local migrate deploy
+```
+
+Direct non-TLS local development tooling, including `prisma migrate dev`, remains
+available with a loopback datasource and non-production TLS-disabled settings.
+Direct hosted/production or verified-TLS database commands through
+`prisma7.config.ts` receive no datasource: use the supported wrapper. Do not treat
+`pnpm exec prisma migrate deploy` or hand-built SSL URL parameters as a secure
+hosted migration workflow. The wrapper deliberately supports only noninteractive
+`check`, `migrate status` and `migrate deploy`; URL, config and schema overrides
+are rejected. Shadow database connections are not used by these commands.
+The internal `LIFEOS_PRISMA_DATABASE_URL` exists only in the wrapper's child process; do not
+set it as an application/deployment environment variable.
+
+The shared `databaseTlsPolicy` validates the same modes and X.509 PEM input as
+runtime. Multiline PEM and literal escaped newlines are supported. Runtime keeps
+its existing MariaDB adapter options and Node default CA set. The native Prisma
+CLI instead uses MySQL `sslaccept=strict`, with native certificate-chain and
+hostname verification. With no custom CA it uses the native TLS trust store,
+which can differ from Node's CA set. With `DATABASE_SSL_CA`, the validated PEM is
+provided through a private temporary `sslcert` file. The native TLS connector's
+normal trust roots also remain available; this is not an exclusive-CA pinning
+mechanism. Non-TLS URL query parameters, including repeated parameters, are
+preserved; SSL/TLS overrides are replaced by the selected policy. TLS connections
+force TCP (`prefer_socket=false`) and reject a socket override. Client-identity
+URL options (`sslidentity`/`sslpassword`) are deliberately unsupported.
+
+Certificate files are outside the repository, with owner-only Windows directory
+ACLs or POSIX directory/file modes 0700/0600. They are removed after success,
+failure and handled SIGINT/SIGTERM/exit. An OS crash, power loss or SIGKILL cannot
+run cleanup: use a private temporary location and remove stale
+`lifeos-prisma-tls-*` directories owned by the migration job after confirming no
+job is active. Never commit certificates. If a sandbox prevents private ACLs or
+cleanup, run the migration job in its intended controlled environment; permission
+failures do not trigger a weaker connection.
+
+The wrapper suppresses native CLI output because it can contain datasource/error
+details. It reports completion/failure and only allowlisted Prisma error labels,
+without URLs, credentials, certificate contents or raw native diagnostics. A
+failed status check can also mean pending migrations. Do not assume every failure
+is TLS-related. No automatic retry or plaintext fallback is implemented.
+
+To test the first connection independently of migration history, run this in
+the PowerShell session containing your database URL, TLS mode and CA settings:
+
+```powershell
+pnpm db:cli check
+$LASTEXITCODE
+```
+
+This uses the same secure connection preparation and Prisma configuration,
+executing only the fixed `SELECT 1;` through Prisma 7's `db execute --stdin`.
+It does not read or create the migration table, apply migrations or change data.
+`--local` and arbitrary SQL/options are not accepted for this check.
+
+Exit 0 with `Prisma connection check succeeded (verified TLS; SELECT 1).` means
+the query completed with certificate-chain and hostname verification enabled.
+It does not mean migrations have been applied. Exit 1 means the check failed;
+only an allowlisted Prisma code, `CONFIGURATION_REJECTED`, or `CHECK_FAILED`
+is reported. The last category is deliberately inconclusive, not a TLS diagnosis.
+Native diagnostics and connection details remain suppressed. Private CA files
+are cleaned up using the existing wrapper lifecycle, without insecure retries.
+
+In the installed Prisma 7.10.1 CLI, `migrate status` also exits 1 when the database
+is behind local migrations or has no migration table, after inspecting migration
+history successfully. Thus an initial empty database can explain status exit 1;
+only a successful independent check establishes verified connectivity here.
+
+Before applying **any hosted migration**, run the safe status command in the
+intended migration environment, verify the actual provider CA and hostname, and
+review pending migrations through your controlled deployment process. Validate
+failure with an incorrect CA/hostname on an isolated test target. The wrapper
+configuration and unit tests do not establish a managed provider's TLS handshake.
+No hosted migration or managed-database handshake has been performed here.
+The existing local status check has passed with explicit plaintext mode; a
+strict-TLS local status attempt failed and was not retried insecurely. No
+successful certificate-and-hostname TLS handshake is claimed.
+
+The engine parameters were checked against the installed engine commit
+[`d1b3f377ca835d73fd50954a5e22128b9ebdd6b8`](https://github.com/prisma/prisma-engines/blob/d1b3f377ca835d73fd50954a5e22128b9ebdd6b8/quaint/src/connector/mysql/url.rs).
+Recheck connector semantics and rerun the CLI TLS tests when upgrading Prisma.
+
+## Public authentication deployment
+
+`BETTER_AUTH_URL` must be an explicitly configured canonical HTTP(S) origin.
+Local development continues to use `http://localhost:3000`; actual production
+runtime requires HTTPS. Production additional origins must also use HTTPS.
+No domain is hardcoded or inferred from Host, forwarded-host or Vercel preview
+headers. Missing or invalid configuration fails closed, without echoing its
+contents. `BETTER_AUTH_SECRET` is required, and production requires at least
+32 characters: supply a securely generated random secret, never a sample value.
+Keep it stable between deployments unless intentionally rotating sessions.
+
+Better Auth and the Finance/Health mutation guard use the same pure origin
+parser and allowlist builder. `BETTER_AUTH_TRUSTED_ORIGINS` remains an explicit
+comma-separated list; normalized entries are deduplicated. Wildcards (including
+encoded wildcard hostnames), credentials, paths, queries and fragments are
+rejected. Do not add a wildcard for Vercel previews; configure each approved
+HTTPS origin explicitly. Configuring another origin does not share cookies
+between domains or enable arbitrary credentialed CORS.
+
+### Local builds versus production runtime
+
+`next.config.ts` uses Next's documented configuration-function `phase` argument
+to set an internal, process-only `LIFEOS_NEXT_PHASE` marker. Build workers inherit
+it. Only the production-build phase permits HTTP origins with an exact loopback
+hostname (`localhost`, `127.0.0.1` or `[::1]`), so an ordinary `pnpm build` using
+the existing local environment still works. Public HTTP origins remain invalid
+during builds. The dev/server config callback overwrites the marker on startup,
+and a cold serverless runtime without the marker enforces HTTPS.
+
+**Do not configure `LIFEOS_NEXT_PHASE` in Vercel, shell profiles or environment
+files.** It is internal lifecycle context, not an authentication bypass setting.
+It must never be added to Next's `env` config, which would inline a build-time
+exception into deployed code. See [Next configuration phases](https://nextjs.org/docs/app/api-reference/config/next-config-js#phase).
+An additional Better Auth before-hook rechecks production HTTPS for actual auth
+operations without any build exception. Even an accidentally retained phase
+marker cannot permit production HTTP signup, sign-in or session access.
+
+A successful localhost production build does not make HTTP `next start` an
+approved production authentication environment. For HTTP localhost use
+`pnpm dev`; production-server testing requires an HTTPS origin and endpoint.
+Configure the final canonical HTTPS URL and protected server secrets for the
+intended Vercel environments before deployment. No actual `.env` is modified
+by these checks and none of these variables should use `NEXT_PUBLIC_`.
+
+### Cookies, signup and recovery
+
+Production cookies explicitly use Secure, HttpOnly and SameSite=Lax. They remain
+host-only, with cross-subdomain sharing disabled. Better Auth selects its own
+cookie names and Secure prefixes; no domain or name overrides are configured.
+Local HTTP development keeps non-Secure cookies. CSRF/origin checks remain
+enabled, and request-host proxy inference is disabled. Session durations,
+signup auto-sign-in and logout/revocation behavior retain their existing defaults.
+
+Public email/password signup stays enabled. Passwords remain 8–128 characters;
+email uniqueness is enforced by Better Auth and the existing MySQL unique index.
+Dashboard and API session checks and Health/Finance ownership filtering remain
+unchanged. See [Better Auth cookies](https://better-auth.com/docs/concepts/cookies).
+
+Email delivery is **not configured**. Verification and password-reset endpoints
+exist in the installed library, but their send operations are unavailable without
+senders. Email verification is not mandatory, and users can currently register
+and sign in with an unverified email. Before calling public registration fully
+production-ready, select an email provider and implement verified ownership,
+verification/resend and recovery UI, expiry/replay tests, abuse controls and
+privacy-safe delivery diagnostics. Never log tokens or verification/reset URLs.
+
+On a real HTTPS deployment, inspect signup/sign-in and logout Set-Cookie headers
+in browser developer tools. Record only Secure, HttpOnly, SameSite, Path and
+whether Domain is absent; confirm logout invalidates the session. Never paste
+cookie values or unredacted network captures into reports. Configuration and
+memory-adapter tests do not establish real browser or production HTTPS behavior.
+
+### Authentication rate limits and deployment gates
+
+Production explicitly enables Better Auth's shared MySQL rate limiter. Limits
+apply to the resolved client IP and normalized auth path across instances:
+
+| Auth path | Requests | Window |
+| --- | --- | --- |
+| `/sign-up/email` | 3 | 300 seconds |
+| `/sign-in/email` | 3 | 60 seconds |
+| `/request-password-reset` | 3 | 300 seconds |
+| `/reset-password` | 3 | 300 seconds |
+| `/send-verification-email` | 3 | 300 seconds |
+| `/verify-email` | 10 | 60 seconds |
+| Other auth paths | 100 | 60 seconds |
+
+The email-related limits do not enable email delivery. Development retains
+disabled rate limiting. The installed library returns HTTP 429 with
+`X-Retry-After` when a limit is reached. See [Better Auth rate limiting](https://better-auth.com/docs/concepts/rate-limit).
+
+Better Auth and its Prisma adapter are **1.7.10**, with Prisma **7.10.1**.
+`RateLimit` maps to `rate_limit`; its unique `key` prevents competing first
+requests from creating independent counters. `lastRequest` is a millisecond
+`BigInt`, indexed for cleanup. Deploy migration
+`20261021000000_auth_rate_limit` before deploying this configuration; it adds
+only this table. This task applied it only to loopback MySQL, never a hosted DB.
+
+A real MySQL concurrency test exposed an installed adapter defect: guarded
+`update()` calls could return a row even when another request had consumed the
+last slot. The `rateLimitSafeAdapter` override handles **only** the native
+limiter's `incrementOne` operation with guarded Prisma `updateMany()` and its
+actual affected-row count. It preserves the native limiter, rules, expiry,
+first-insert handling and HTTP 429 contract; no custom SQL limiter is used.
+Keep this regression test when upgrading Prisma or Better Auth.
+
+**Window behavior:** every accepted request refreshes `lastRequest`. A bucket
+resets after a full window without an accepted request; rejected requests do
+not extend it. This is the installed library's inactivity-window behavior,
+not a fixed wall-clock window.
+
+### Scheduled authentication rate-limit cleanup
+
+Better Auth's native opportunistic pruning remains unchanged: renewing an
+expired existing bucket can prune rows older than its longest window (currently
+300 seconds). One-off rows may otherwise accumulate. A separate bounded job now
+removes records whose `lastRequest` is **strictly older than seven days**.
+That field is a millisecond `BigInt` recording the last accepted request, not a
+creation date. The seven-day cutoff exceeds every current rate-limit window;
+recheck this safety margin when changing auth rules. Keep clocks synchronized.
+
+`GET /api/cron/cleanup-rate-limits` selects at most **500 IDs per batch**, processes
+at most **10 batches** (5000 candidates), and rechecks the same stale timestamp
+condition in each deletion. A row refreshed after selection is preserved. Only
+`RateLimit` records are touched. Duplicates, overlapping invocations and repeated
+runs are safe. Completed batches remain committed if a later batch fails or the
+60-second function limit interrupts processing. There are no application retries;
+a subsequent invocation continues from the remaining stale rows.
+
+Successful responses and success logs contain only `deleted`, `batches`, and
+`limitReached`. If `limitReached` is true, the final batch was full and more rows
+**may** remain; the next daily run can continue. It is a conservative signal, not
+an exact backlog count. Monitor repeated true results and failures rather than
+assuming every invocation empties the table. Errors return a generic 500 and log
+only the existing sanitized error classification. All route responses include
+`Cache-Control: no-store`.
+
+#### Schedule and secret configuration
+
+`vercel.json` registers this route at **`0 4 * * *` (daily UTC)**. Vercel Hobby
+may invoke it at any point within the 04:00-04:59 UTC hour. Delivery is best effort:
+a run may be missed or duplicated. Scheduled jobs target **Production**, not
+Preview. See [Vercel Cron management](https://vercel.com/docs/cron-jobs/manage-cron-jobs)
+and [Hobby scheduling limits](https://vercel.com/docs/cron-jobs/usage-and-pricing).
+
+In Vercel Project Settings > Environment Variables:
+
+1. Add a server-only `CRON_SECRET` scoped to **Production**, using an independent,
+   high-entropy random token (for example, 32 random bytes encoded as hex from a
+   secret manager). Do not reuse the authentication secret or commit the value.
+2. Add a **different** `CRON_SECRET` scoped to **Preview** for authorized manual
+   Preview testing. Do not expose it with `NEXT_PUBLIC_` or place it in a URL.
+3. Redeploy the relevant environment after changing its secret. Vercel Cron sends
+   `Authorization: Bearer <CRON_SECRET>` on production invocations. The route
+   compares fixed-length SHA-256 digests with Node's `timingSafeEqual`.
+
+An absent, empty or whitespace-only configured secret, missing bearer header,
+or incorrect token returns **401**, before Prisma initialization. Cookies, user
+sessions, Origin, query-string secrets and cron-looking User-Agent headers do
+not authorize cleanup. The public mutation-origin guard is not used for cron.
+
+#### Local and manual Preview checks
+
+Set a local `CRON_SECRET` through a protected local environment before starting
+`pnpm dev`; use the same value when testing. Use the intended local/test datasource.
+In another PowerShell 7 terminal, read the token without placing its value in
+command history, then invoke the endpoint:
+
+```powershell
+$protectedToken = Read-Host 'Cron secret for this target' -AsSecureString
+$token = [System.Net.NetworkCredential]::new('', $protectedToken).Password
+$target = 'http://localhost:3000/api/cron/cleanup-rate-limits'
+Invoke-WebRequest -Uri $target -SkipHttpErrorCheck `
+    -Headers @{ Authorization = "Bearer $token" } | Select-Object StatusCode, Content
+Remove-Variable token, protectedToken
+
+# No authorization must return 401.
+(Invoke-WebRequest -Uri $target -SkipHttpErrorCheck).StatusCode
+```
+
+For Preview, use its HTTPS URL and its **Preview** secret, plus authorized Vercel
+deployment-protection access if configured. This checks the route manually; it
+does not establish that a scheduled job runs in Preview. Do not print request
+headers, secrets, raw IP keys or raw database diagnostics.
+
+Focused mocked tests cover authorization, responses, bounded processing,
+concurrent-refresh protection and partial failures. The opt-in real MySQL check
+uses two connections and restricts every query to disposable fixture keys:
+
+```powershell
+$env:LIFEOS_TEST_MYSQL_CLEANUP = '1'
+node --experimental-transform-types --test tests/rate-limit-cleanup.mysql.test.mjs
+Remove-Item Env:LIFEOS_TEST_MYSQL_CLEANUP
+```
+
+#### Production verification still required
+
+After deployment, inspect Project Settings > Cron Jobs for the registered daily
+job, and inspect its invocation/function logs filtered to
+`/api/cron/cleanup-rate-limits` or `[cron cleanup-rate-limits]`. Check the actual
+invocation time, HTTP status, counts and `limitReached`. A 401 suggests a missing
+or mismatched Production secret or an old deployment; a 500 is a classified
+cleanup failure and may follow partially committed batches. Confirm subsequent
+runs resume safely, and investigate missing daily invocations or persistent
+backlogs through the platform logs without adding unbounded retries.
+
+**Scheduled production execution has not been verified.** Implementation, mocked
+route tests and local MySQL checks do not prove job registration, delivery,
+Production secret injection, hosted TLS connectivity or production execution.
+These remain deployment checks; no hosted cleanup was invoked by this task.
+
+### Vercel client-IP strategy and required Preview verification
+
+When `NODE_ENV=production` and the server-only Vercel system marker is exactly
+`VERCEL=1`, Better Auth uses **only** `x-vercel-forwarded-for`. This includes
+Vercel Preview builds, which run in production mode. The header is selected
+explicitly; there is no fallback to `X-Forwarded-For`, `X-Real-IP`, `Forwarded`,
+Host, forwarded host or protocol. No trusted-proxy chain is configured.
+`trustedProxyHeaders: false` and the separate origin checks remain unchanged.
+
+This strategy assumes direct ingress through Vercel. See Vercel's
+[request-header reference](https://vercel.com/docs/headers/request-headers#x-vercel-forwarded-for)
+and [system environment variables](https://vercel.com/docs/environment-variables/system-environment-variables).
+Ensure Vercel exposes its system variables at runtime. The marker selects a
+platform configuration; it is not cryptographic proof of ingress. Do not set
+`VERCEL=1` on a self-hosted server or assume this strategy stays valid behind
+an added proxy/CDN. Review and verify that topology before enabling IP trust.
+
+Installed Better Auth **1.7.10** trims whitespace, drops empty comma tokens and
+accepts one valid IPv4/IPv6 token. Two or more nonempty tokens (including repeated
+headers combined by `Headers`), an invalid address, or an address with a port
+cannot supply an identity. A value such as `, 192.0.2.1, ,` is therefore accepted
+as one address; a two-address chain is rejected, rather than trusting its
+leftmost value. Native IPv6 normalization retains the default /64 grouping.
+
+**Deliberate fallback:** missing/invalid platform IP information in production
+uses Better Auth's shared `no-trusted-ip` bucket per auth path, with the same
+limits and database enforcement. It never disables limiting or tries another
+header. Visitors without a resolved IP can block each other. Outside the
+production Vercel configuration, no IP headers are trusted. Local development
+keeps rate limiting disabled and its existing cookie behavior.
+
+**Live Vercel verification has NOT been performed.** Synthetic Request tests
+verify parsing, selected counters and fallback only. They cannot prove that
+Vercel overwrites client-supplied headers. Attribution remains a public-launch
+gate until the following checklist passes through the actual HTTPS ingress.
+Do not add a public IP/header diagnostics endpoint or log raw IPs, credentials,
+tokens or request headers to perform this check.
+
+#### Manual HTTPS Preview checklist (pending)
+
+- [ ] Deploy to an HTTPS Vercel Preview with its own test datasource and the
+  rate-limit table already provisioned. Configure the exact Preview origin,
+  secrets and verified MySQL TLS. Confirm `NODE_ENV=production` and the Vercel
+  system marker is exposed. Use direct Vercel ingress without another proxy.
+- [ ] Ensure the test requests reach Better Auth, rather than a Vercel deployment
+  protection login, redirect, challenge or WAF response. Use authorized Preview
+  access without publishing access credentials. Never test the public service.
+- [ ] **A - Network A:** after a quiet window of at least 65 seconds, issue four
+  sign-in attempts rapidly from one real network, using nonexistent credentials
+  (or an authorized disposable account with an intentionally incorrect password).
+  Expect the first three to reach credential validation and the fourth to return
+  Better Auth's HTTP 429 and positive `X-Retry-After`.
+- [ ] **B - Same network, forged headers:** while Network A's bucket is blocked,
+  repeat requests with different forged values for each of `X-Forwarded-For`,
+  `X-Real-IP` and `x-vercel-forwarded-for`, individually and together. Also try a
+  two-address chain and malformed preferred-header value. Every attempt must
+  remain blocked; changing a supplied header must not acquire a fresh budget.
+- [ ] **C - Network B:** before A's window expires, send an attempt from a genuinely
+  different client network (e.g. a different carrier connection, not another
+  device behind the same Wi-Fi/NAT). It must reach credential validation instead
+  of inheriting A's HTTP 429. IPv6 visitors within one /64 share a native bucket.
+- [ ] After expiry, confirm A can again reach credential validation. Record the
+  deployment identifier, time, network labels, response statuses and retry delays
+  only. Keep IP/header data and credentials out of the report.
+- [ ] Record actual observations and mark attribution verified only if A, B and C
+  all pass. Any header-based bypass, unexpected cross-network blocking, missing
+  marker, redirect or ambiguous response leaves this launch gate open. Investigate
+  the deployed ingress and platform settings without weakening the limits.
+
+Example for PowerShell 7 on the two client networks (no request/header dumps):
+
+```powershell
+$previewOrigin = 'https://YOUR-PREVIEW.vercel.app'
+$invalidCredentials = @{
+    email = 'lifeos-ip-check@example.invalid'
+    password = 'Synthetic-Invalid-Password-ONLY-1234!'
+} | ConvertTo-Json
+
+function Invoke-PreviewIpCheck {
+    param([hashtable]$ExtraHeaders = @{})
+    $headers = @{ Origin = $previewOrigin }
+    foreach ($name in $ExtraHeaders.Keys) {
+        $headers[$name] = $ExtraHeaders[$name]
+    }
+    $response = Invoke-WebRequest -Method Post -SkipHttpErrorCheck `
+        -Uri "$previewOrigin/api/auth/sign-in/email" `
+        -ContentType 'application/json' -Headers $headers -Body $invalidCredentials
+    [pscustomobject]@{
+        Status = [int]$response.StatusCode
+        RetryAfter = $response.Headers['X-Retry-After']
+    }
+}
+
+# A: run once from Network A, after the quiet window.
+1..4 | ForEach-Object { Invoke-PreviewIpCheck }
+
+# B: run from Network A immediately after A; these must remain blocked.
+1..4 | ForEach-Object {
+    Invoke-PreviewIpCheck -ExtraHeaders @{
+        'X-Forwarded-For' = "192.0.2.$_"
+        'X-Real-IP' = "198.51.100.$_"
+        'x-vercel-forwarded-for' = "203.0.113.$_"
+    }
+}
+# Also repeat with each header alone, then malformed/multi-value preferred headers.
+
+# C: on Network B, define the same function and issue one attempt during A's block.
+Invoke-PreviewIpCheck
+```
+
+The script sends synthetic invalid credentials and prints only status/retry data;
+it does not establish real ingress behavior until run against the Preview.
+
+Local integration check (requires generated client and the migration on a
+loopback MySQL datasource; the test never applies migrations):
+
+```powershell
+$env:LIFEOS_TEST_MYSQL_RATE_LIMIT = '1'
+node --experimental-transform-types --test tests/auth-rate-limit.mysql.test.mjs
+Remove-Item Env:LIFEOS_TEST_MYSQL_RATE_LIMIT
+```
+
+It supplies synthetic `x-vercel-forwarded-for` values to two independent Prisma
+pools/auth instances, tests all configured paths,
+100-request default, concurrent creation/increment/renewal and native cleanup,
+verifies signup/login/session/logout across clients, and deletes its disposable
+user and synthetic counters in `finally`. It is explicitly skipped in
+the default suite; never point it at a hosted database.
+
+Release gates remain: deploy the additive migration, final HTTPS URL/secrets,
+verified IP attribution, Production cron secret/configuration and observed cleanup
+execution, functioning
+verification/recovery email flows, and a staging browser check of cookies,
+session lifecycle, CSRF rejection and isolation.
 
 ## Learn More
 

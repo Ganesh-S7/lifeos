@@ -3,6 +3,44 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Sonner follows LifeOS tokens, including explicit theme changes. */
+[data-sonner-toaster][data-sonner-theme].lifeos-toaster {
+  --normal-bg: var(--surface-elevated);
+  --normal-border: var(--border);
+  --normal-text: var(--text-primary);
+  --normal-bg-hover: var(--surface-subtle);
+  --normal-border-hover: var(--border);
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.lifeos-toaster [data-sonner-toast].lifeos-toast {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.lifeos-toaster [data-sonner-toast].lifeos-toast [data-description] {
+  color: var(--text-secondary);
+}
+
+.lifeos-toaster [data-sonner-toast].lifeos-toast [data-button] {
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
+
+.lifeos-toaster [data-sonner-toast].lifeos-toast [data-close-button] {
+  background: var(--surface-elevated);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toaster] *,
+  [data-sonner-toast] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 :root {
   /* ------------------------------
      Base / Light

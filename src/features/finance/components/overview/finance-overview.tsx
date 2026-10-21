@@ -2,20 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Button, DeleteModal, Stat } from "@/components/ui";
+import { Button, DeleteModal, LoadError, Stat } from "@/components/ui";
+import { useFinanceMutation } from "../../hooks/use-finance-mutation";
+import { notify } from "@/lib/notifications";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateDisplay, formatDateValue } from "@/lib/utils/date";
 import { financeActions, useFinance } from "../../store/finance-store";
-import { categorySpending, financialSnapshot, monthlyActivity } from "../../utils/finance-calculations";
+import { categorySpending, financialSnapshot } from "../../utils/finance-calculations";
+import { buildFinanceChartData } from "../../utils/finance-chart-data";
 import { monthlyActivityComparison, overallPositionComparison } from "../../utils/finance-comparisons";
 import { CategoryBreakdownChart } from "./category-breakdown-chart";
 import { FinanceCharts } from "./finance-charts";
+import { FinanceOverviewSkeleton } from "./finance-overview-skeleton";
+import { FinanceRefreshNotice } from "../finance-refresh-notice";
 import { FinanceComparison } from "./finance-comparison";
 import { FinanceManager, type ManagerKind } from "./finance-manager";
 import { ManageFinancesDialog, type FinanceSection } from "./manage-finances-dialog";
 import { NetWorthBreakdownDialog } from "./net-worth-breakdown-dialog";
 import {
-    ArrowLeft,
     ArrowLeftRight,
     ArrowRight,
     Banknote,
@@ -28,40 +32,30 @@ import {
 } from "lucide-react";
 
 export function FinanceOverview() {
-    const { data, ready } = useFinance();
+    const { userId } = useFinance();
+    return <FinanceOverviewContent key={userId ?? "signed-out"} />;
+}
+
+function FinanceOverviewContent() {
+    const { data, ready, loadError, refreshError, refreshing, retry } = useFinance();
     const [manager, setManager] = useState<ManagerKind | null>(null);
     const [manageOpen, setManageOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<FinanceSection>("account");
     const [breakdownOpen, setBreakdownOpen] = useState(false);
     const [editId, setEditId] = useState<string>();
-    const [target, setTarget] = useState<{ kind: ManagerKind; id: string; name: string } | null>(null);
+    const [target, setTarget] = useState<{ kind: ManagerKind; id: string; name: string; } | null>(null);
     const [error, setError] = useState("");
+    const deletion = useFinanceMutation();
     const now = new Date();
     const month = formatDateValue(now).slice(0, 7);
     const snapshot = financialSnapshot(data);
     const positionComparisons = overallPositionComparison(snapshot, data.positionHistory, now);
-    const hasSnapshot = data.accounts.length + data.investments.length + data.liabilities.length > 0;
     const activityComparisons = monthlyActivityComparison(data.transactions, now);
     const activity = activityComparisons.current;
     const categories = categorySpending(data.transactions, month);
     const recent = [...data.transactions].sort((a, b) =>
         b.date.localeCompare(a.date) || b.recordedAt.localeCompare(a.recordedAt)).slice(0, 5);
-    const chartData = Array.from({ length: 6 }, (_, index) => {
-        const date = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
-        const key = formatDateValue(date).slice(0, 7);
-        const hasRecords = data.transactions.some((item) => item.date.startsWith(key));
-        const values = monthlyActivity(data.transactions, key);
-        const sample = index < 5 && !hasRecords;
-        return {
-            month: date.toLocaleDateString("en-IN", { month: "short" }),
-            income: index === 5 ? activity.income
-                : sample ? [32000, 37000, 34000, 39000, 36000][index] : values.income,
-            expenses: index === 5 ? activity.expenses
-                : sample ? [22000, 26000, 24000, 28000, 25000][index] : values.expenses,
-            netWorth: index === 5 ? snapshot.netWorth : hasSnapshot
-                ? snapshot.netWorth - (5 - index) * 2500 : 0,
-        };
-    });
+    const chartData = buildFinanceChartData(data, now);
 
     function open(kind: ManagerKind, id?: string) {
         setEditId(id);
@@ -75,18 +69,30 @@ export function FinanceOverview() {
         setError("");
     }
 
-    function remove() {
+    async function remove() {
         if (!target) return;
-        try {
-            if (target.kind === "account") financeActions.deleteAccount(target.id);
-            if (target.kind === "investment") financeActions.deleteInvestment(target.id);
-            if (target.kind === "liability") financeActions.deleteLiability(target.id);
-            if (target.kind === "transaction") financeActions.deleteTransaction(target.id);
-            setError("");
-        } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Could not delete item.");
-        }
-        setTarget(null);
+        return deletion.run(async () => {
+            if (target.kind === "account") await financeActions.deleteAccount(target.id);
+            if (target.kind === "investment") await financeActions.deleteInvestment(target.id);
+            if (target.kind === "liability") await financeActions.deleteLiability(target.id);
+            if (target.kind === "transaction") await financeActions.deleteTransaction(target.id);
+            return true;
+        }, {
+            onSuccess: () => {
+                setError("");
+                const label = target.kind === "account" ? "Bank account"
+                    : target.kind === "investment" ? "Investment"
+                        : target.kind === "liability" ? "Liability" : "Transaction";
+                notify.success(`${label} deleted.`);
+                setTarget(null);
+            },
+            onError: (cause) => {
+                setError(cause instanceof Error ? cause.message : "Could not delete item.");
+                notify.error("Unable to delete this item.", {
+                    description: "Review any linked transactions and try again.",
+                });
+            },
+        });
     }
 
     const groups = [
@@ -163,7 +169,7 @@ export function FinanceOverview() {
             unit: "points" as const,
             icon: Percent,
         },
-    ]
+    ];
 
     return (
         <div className="space-y-7">
@@ -182,137 +188,146 @@ export function FinanceOverview() {
                     </Link>
                 </div>
             </header>
-            {!ready && <p className="text-sm text-text-secondary">Loading finance data…</p>}
             {error && <p role="alert" className="rounded-lg bg-danger-subtle p-3 text-sm text-danger">{error}</p>}
-            <section className="space-y-3" aria-labelledby="snapshot-title">
-                <div className="flex justify-between items-center gap-4">
-                    <div>
-                        <h2 id="snapshot-title" className="text-base font-semibold text-text-primary">Overall financial snapshot</h2>
-                        <p className="text-xs text-text-secondary">Current balances, valuations and debt</p>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => openManage()}
-                    >
-                        Manage finances
-                    </Button>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {groups.map((group) => (
-                        <Stat
-                            key={group.kind}
-                            icon={group.icon}
-                            className="min-h-48"
-                            label={group.label}
-                            value={formatCurrency(group.value)}
-                            description={group.description}
-                            footer={
-                                <FinanceComparison
-                                    comparison={group.comparison}
-                                    period="since last month"
-                                    recordedValue={group.kind === "investment"}
-                                />
-                            }
-                            action={
-                                <button
-                                    type="button"
-                                    className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
-                                    onClick={() => openManage(group.kind)}
-                                >
-                                    {group.action} <ArrowRight size={10} className="group-hover:translate-x-0.5 duration-200 ease-in-out" />
-                                </button>
-                            }
-                        />
-                    ))}
-                    <Stat
-                        icon={Scale}
-                        className="min-h-48"
-                        label="Net worth"
-                        value={formatCurrency(snapshot.netWorth)}
-                        description="Bank balance + investments − debt"
-                        footer={
-                            <FinanceComparison
-                                comparison={positionComparisons.netWorth}
-                                period="since last month"
-                            />
-                        }
-                        action={
-                            <button
-                                type="button"
-                                className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
-                                onClick={() => setBreakdownOpen(true)}
-                            >
-                                View breakdown <ArrowRight size={10} className="group-hover:translate-x-1 duration-200 ease-in-out" />
-                            </button>
-                        }
+            {!ready ? (
+                loadError ? <LoadError message={loadError} onRetry={retry} /> : <FinanceOverviewSkeleton />
+            ) : (
+                <>
+                    <FinanceRefreshNotice
+                        message={refreshError}
+                        refreshing={refreshing}
+                        onRetry={retry}
                     />
-                </div>
-            </section>
-            <section className="space-y-3" aria-labelledby="monthly-title">
-                <div className="flex justify-between item gap-4">
-                    <div>
-                        <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
-                        <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={data.accounts.length === 0}
-                        onClick={() => open("transaction")}
-                    >
-                        Record income or transfer
-                    </Button>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {monthCards.map((item) => (
-                        <Stat
-                            key={item.label}
-                            icon={item.icon}
-                            className="min-h-30"
-                            label={item.label}
-                            value={item.value}
-                            description=""
-                            footer={
-                                <FinanceComparison
-                                    comparison={item.comparison}
-                                    period="vs previous period"
-                                    unit={item.unit}
-                                />
-                            }
-                        />
-                    ))}
-                </div>
-            </section>
-            <FinanceCharts data={chartData} hasSnapshot={hasSnapshot} />
-            <CategoryBreakdownChart data={categories} />
-            <section className="rounded-2xl border border-border bg-surface p-5">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-base font-semibold text-text-primary">Recent transactions</h2>
-                    <Link href="/finance/expenses" className="text-sm text-primary hover:underline">Expenses</Link>
-                </div>
-                {recent.length === 0 && <p className="mt-4 text-sm text-text-muted">No transactions yet.</p>}
-                <div className="mt-3 divide-y divide-border-subtle">
-                    {recent.map((item) => (
-                        <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <section className="space-y-3" aria-labelledby="snapshot-title">
+                        <div className="flex justify-between items-center gap-4">
                             <div>
-                                <p className="text-sm font-medium text-text-primary">{item.description}</p>
-                                <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")} · {formatDateDisplay(item.date)}</p>
-                                {item.demoAccount && <p className="text-xs text-text-muted">Demo record</p>}
+                                <h2 id="snapshot-title" className="text-base font-semibold text-text-primary">Overall financial snapshot</h2>
+                                <p className="text-xs text-text-secondary">Current balances, valuations and debt</p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm font-semibold text-text-primary">
-                                    {item.type === "income" || item.type === "investment_sale" ? "+" : item.type === "transfer" ? "↔ " : "−"}{formatCurrency(item.amount)}
-                                </span>
-                                {item.type !== "expense" && <button className="text-xs text-primary" onClick={() => open("transaction", item.id)}>Edit</button>}
-                                {item.type !== "expense" && <button className="text-xs text-danger" onClick={() => setTarget({ kind: "transaction", id: item.id, name: item.description })}>Delete</button>}
-                            </div>
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => openManage()}
+                            >
+                                Manage finances
+                            </Button>
                         </div>
-                    ))}
-                </div>
-            </section>
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {groups.map((group) => (
+                                <Stat
+                                    key={group.kind}
+                                    icon={group.icon}
+                                    className="min-h-48"
+                                    label={group.label}
+                                    value={formatCurrency(group.value)}
+                                    description={group.description}
+                                    footer={
+                                        <FinanceComparison
+                                            comparison={group.comparison}
+                                            period="since last month"
+                                            recordedValue={group.kind === "investment"}
+                                        />
+                                    }
+                                    action={
+                                        <button
+                                            type="button"
+                                            className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
+                                            onClick={() => openManage(group.kind)}
+                                        >
+                                            {group.action} <ArrowRight size={10} className="group-hover:translate-x-0.5 duration-200 ease-in-out" />
+                                        </button>
+                                    }
+                                />
+                            ))}
+                            <Stat
+                                icon={Scale}
+                                className="min-h-48"
+                                label="Net worth"
+                                value={formatCurrency(snapshot.netWorth)}
+                                description="Bank balance + investments − debt"
+                                footer={
+                                    <FinanceComparison
+                                        comparison={positionComparisons.netWorth}
+                                        period="since last month"
+                                    />
+                                }
+                                action={
+                                    <button
+                                        type="button"
+                                        className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
+                                        onClick={() => setBreakdownOpen(true)}
+                                    >
+                                        View breakdown <ArrowRight size={10} className="group-hover:translate-x-1 duration-200 ease-in-out" />
+                                    </button>
+                                }
+                            />
+                        </div>
+                    </section>
+                    <section className="space-y-3" aria-labelledby="monthly-title">
+                        <div className="flex justify-between item gap-4">
+                            <div>
+                                <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
+                                <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={data.accounts.length === 0}
+                                onClick={() => open("transaction")}
+                            >
+                                Record income or transfer
+                            </Button>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {monthCards.map((item) => (
+                                <Stat
+                                    key={item.label}
+                                    icon={item.icon}
+                                    className="min-h-30"
+                                    label={item.label}
+                                    value={item.value}
+                                    description=""
+                                    footer={
+                                        <FinanceComparison
+                                            comparison={item.comparison}
+                                            period="vs previous period"
+                                            unit={item.unit}
+                                        />
+                                    }
+                                />
+                            ))}
+                        </div>
+                    </section>
+                    <FinanceCharts data={chartData} />
+                    <CategoryBreakdownChart data={categories} />
+                    <section className="rounded-2xl border border-border bg-surface p-5">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-base font-semibold text-text-primary">Recent transactions</h2>
+                            <Link href="/finance/expenses" className="text-sm text-primary hover:underline">Expenses</Link>
+                        </div>
+                        {recent.length === 0 && <p className="mt-4 text-sm text-text-muted">No transactions yet.</p>}
+                        <div className="mt-3 divide-y divide-border-subtle">
+                            {recent.map((item) => (
+                                <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                                    <div>
+                                        <p className="text-sm font-medium text-text-primary">{item.description}</p>
+                                        <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")} · {formatDateDisplay(item.date)}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-semibold text-text-primary">
+                                            {item.type === "income" || item.type === "investment_sale" ? "+" : item.type === "transfer" ? "↔ " : "−"}{formatCurrency(item.amount)}
+                                        </span>
+                                        {item.type !== "expense" && <button className="text-xs text-primary" onClick={() => open("transaction", item.id)}>Edit</button>}
+                                        {item.type !== "expense" && <button className="text-xs text-danger" onClick={() => setTarget({ kind: "transaction", id: item.id, name: item.description })}>Delete</button>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </>
+            )}
             <ManageFinancesDialog
-                open={manageOpen}
+                open={ready && manageOpen}
                 activeTab={activeTab}
                 error={error}
                 onOpenChange={(open) => {
@@ -327,7 +342,7 @@ export function FinanceOverview() {
                 onEdit={(tab, id) => open(tab, id)}
                 onDelete={(tab, id, name) => setTarget({ kind: tab, id, name })}
             />
-            {manager && (
+            {ready && manager && (
                 <FinanceManager
                     key={`${manager}-${editId || "new"}`}
                     kind={manager}
@@ -336,16 +351,19 @@ export function FinanceOverview() {
                 />
             )}
             <NetWorthBreakdownDialog
-                open={breakdownOpen}
+                open={ready && breakdownOpen}
                 onOpenChange={setBreakdownOpen}
                 bank={snapshot.bank}
                 investments={snapshot.investments}
                 debt={snapshot.debt}
                 netWorth={snapshot.netWorth}
             />
-            <DeleteModal open={target !== null} onOpenChange={(value) => !value && setTarget(null)}
+            <DeleteModal open={ready && target !== null} onOpenChange={(value) => {
+                if (!value && !deletion.isPending()) setTarget(null);
+            }}
                 title={`Delete ${target?.name || "item"}?`}
-                description="This action cannot be undone. Items with linked transactions cannot be removed."
+                description={error || "This action cannot be undone. Items with linked transactions cannot be removed."}
+                isLoading={deletion.isPendingState}
                 confirmText="Delete" onConfirm={remove} />
         </div>
     );

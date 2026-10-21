@@ -10,11 +10,11 @@ import {
     YAxis,
 } from "recharts";
 
-import type { CategorySpendingPoint } from "@/features/finance/data/mock-finance-overview";
+import type { categorySpending } from "../../utils/finance-calculations";
 import { formatCurrency } from "@/lib/utils/currency";
 
 interface CategoryBreakdownChartProps {
-    data: CategorySpendingPoint[];
+    data: ReturnType<typeof categorySpending>;
 }
 
 export function CategoryBreakdownChart({

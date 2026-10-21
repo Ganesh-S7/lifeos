@@ -14,6 +14,8 @@ import {
     Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { authClient } from "@/lib/auth-client";
+import { Skeleton } from "@/components/ui";
 
 const navigation = [
     {
@@ -55,6 +57,23 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
     const pathname = usePathname();
+
+    const { data: session, isPending } = authClient.useSession();
+
+    const userName =
+        session?.user.name?.trim() || "Personal account";
+    const initialSessionLoading = isPending && !session;
+
+    const firstName = userName.split(/\s+/)[0];
+
+    const initials =
+        userName
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0))
+            .join("")
+            .toUpperCase() || "U";
 
     return (
         <>
@@ -102,17 +121,25 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <div className="px-3 pt-5">
                     <button
                         type="button"
+                        disabled={initialSessionLoading}
                         className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left transition-colors hover:bg-surface-elevated"
                     >
                         <div className="flex min-w-0 items-center gap-2.5">
                             <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-[10px] font-semibold text-primary">
-                                GS
+                                {initials}
                             </div>
 
                             <div className="min-w-0">
-                                <p className="truncate text-xs font-medium text-text-primary">
-                                    Ganesh&apos;s Life
-                                </p>
+                                {initialSessionLoading ? (
+                                    <>
+                                        <Skeleton variant="text" className="w-24" />
+                                        <span className="sr-only">Loading workspace</span>
+                                    </>
+                                ) : (
+                                    <p className="truncate text-xs font-medium text-text-primary">
+                                        {firstName}&apos;s Life
+                                    </p>
+                                )}
 
                                 <p className="truncate text-[10px] text-text-muted">
                                     Personal workspace
@@ -194,21 +221,23 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 </nav>
 
                 {/* Footer */}
-                <div className="border-t border-border-subtle p-3">
-                    <div className="flex items-center gap-2.5 rounded-md px-2.5 py-2">
-                        <div className="flex size-7 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-                            GS
-                        </div>
+                <div className="flex items-center gap-2.5 rounded-md px-2.5 py-2">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                        {initials}
+                    </div>
 
-                        <div className="min-w-0">
+                    <div className="min-w-0">
+                        {initialSessionLoading ? (
+                            <Skeleton variant="text" className="w-24" />
+                        ) : (
                             <p className="truncate text-xs font-medium text-text-primary">
-                                Ganesh S
+                                {userName}
                             </p>
+                        )}
 
-                            <p className="truncate text-[10px] text-text-muted">
-                                Personal account
-                            </p>
-                        </div>
+                        <p className="truncate text-[10px] text-text-muted">
+                            {session?.user.email ?? "Personal account"}
+                        </p>
                     </div>
                 </div>
             </aside>

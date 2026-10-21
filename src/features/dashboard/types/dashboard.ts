@@ -7,11 +7,6 @@ export interface OverviewStat {
   trend: Trend;
 }
 
-export interface SpendingItem {
-  label: string;
-  value: number;
-}
-
 export interface ActivityItem {
   title: string;
   description: string;

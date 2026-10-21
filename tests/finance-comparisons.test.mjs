@@ -137,3 +137,27 @@ test("zero income yields no savings-rate comparison", () => {
     assert.equal(result.current.savingsRate, null);
     assert.deepEqual(result.savingsRate, { available: false, reason: "No rate with zero income" });
 });
+
+test("period boundaries are inclusive calendar dates independent of recording timestamps", () => {
+    const entries = [
+        transaction("income", 100, "2026-09-30"),
+        { ...transaction("income", 200, "2026-10-01"), recordedAt: "2026-11-01T00:00:00.000Z" },
+        transaction("expense", 50, "2026-10-11"),
+        transaction("expense", 999, "2026-10-12"),
+    ];
+    assert.deepEqual(activityInPeriod(entries, "2026-10-01", "2026-10-11"), {
+        income: 200, expenses: 50, netCashFlow: 150, savingsRate: 75,
+    });
+});
+
+test("previous-position cutoff excludes snapshots exactly at local month start", () => {
+    const cutoff = equivalentElapsedPeriods(today).previousMonthEndCutoff;
+    const before = new Date(Date.parse(cutoff) - 1).toISOString();
+    const current = { bank: 2000, investments: 0, debt: 0, netWorth: 2000 };
+    const history = [
+        { recordedAt: before, bank: 1000, investments: 0, debt: 0 },
+        { recordedAt: cutoff, bank: 9000, investments: 0, debt: 0 },
+    ];
+    assert.equal(overallPositionComparison(current, history, today).bank.change, 1000);
+    assert.equal(equivalentElapsedPeriods(today).currentStart, "2026-10-01");
+});
