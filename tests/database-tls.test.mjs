@@ -33,6 +33,7 @@ function assertVerified(config) {
     assert.deepEqual(Object.keys(config.ssl).sort(), ["ca", "rejectUnauthorized"]);
     assert.ok(config.ssl.ca.length > 0);
     assert.equal(config.connectionLimit, 5);
+    assert.equal(config.connectTimeout, 10_000);
 }
 
 test("non-production defaults preserve local non-TLS behavior", () => {
@@ -141,7 +142,9 @@ test("TLS options retain the connector's default hostname verification", () => {
 });
 
 test("the installed adapter accepts the real options without connecting", () => {
-    const factory = new PrismaMariaDb(options({ NODE_ENV: "production" }));
+    const config = options({ NODE_ENV: "production" });
+    assert.equal(config.connectTimeout, 10_000);
+    const factory = new PrismaMariaDb(config);
     assert.equal(factory.provider, "mysql");
     assert.equal(typeof factory.connect, "function");
     // connect() is deliberately not called: it creates a pool and queries the server.
@@ -187,7 +190,7 @@ registerHooks({
     },
 });
 
-test("the Prisma singleton passes TLS settings to the adapter without connecting", async () => {
+test("the Prisma singleton passes TLS, 10-second connect timeout and pool limit to the adapter", async () => {
     const keys = ["NODE_ENV", "DATABASE_URL", "DATABASE_SSL_MODE", "DATABASE_SSL_CA"];
     const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
     const previousClient = globalThis.prisma;
@@ -215,6 +218,13 @@ test("the Prisma singleton passes TLS settings to the adapter without connecting
         process.env.DATABASE_SSL_MODE = "disable";
         await assert.rejects(import(`${prismaUrl}?tls-test=invalid`), /not allowed in production/);
         assert.equal(captured.adapters.length, 3);
+        for (const config of captured.adapters) {
+            assert.equal(config.connectTimeout, 10_000);
+            assert.equal(config.connectionLimit, 5);
+            assert.equal(Object.hasOwn(config, "acquireTimeout"), false);
+            assert.equal(Object.hasOwn(config, "idleTimeout"), false);
+            assert.equal(Object.hasOwn(config, "minimumIdle"), false);
+        }
         assert.equal(captured.clients.length, 3);
         assert.equal(captured.connections, 0);
     } finally {

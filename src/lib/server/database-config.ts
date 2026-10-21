@@ -106,6 +106,7 @@ export function databaseAdapterOptions(env: DatabaseEnvironment = process.env) {
         password: decodeURIComponent(url.password),
         database: decodeURIComponent(url.pathname.replace(/^\//, "")),
         connectionLimit: 5,
+        connectTimeout: 10_000,
         ssl: databaseTlsOptions(env),
     };
 }
