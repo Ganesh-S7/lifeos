@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  Bell,
-  LogOut,
-  Menu,
-  Search,
-  Sun,
-} from "lucide-react";
+import { LogOut, Menu, Sun } from "lucide-react";
+import { Breadcrumbs } from "./breadcrumbs";
 import { IconButton, Skeleton } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
 import { useState } from "react";
@@ -79,52 +74,14 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Menu className="size-4.5" />
           </IconButton>
 
-          <div className="hidden items-center gap-2 text-xs text-text-muted sm:flex">
-            <span>LifeOS</span>
-            <span>/</span>
-            <span className="text-text-secondary">Overview</span>
-          </div>
+          <Breadcrumbs />
         </div>
 
         {/* Right */}
         <div className="flex items-center gap-1.5">
-          {/* Search */}
-          <button
-            type="button"
-            className="hidden h-9 w-60 items-center gap-2 rounded-md border border-border-subtle bg-surface px-3 text-left transition-colors hover:border-border hover:bg-surface-elevated lg:flex"
-          >
-            <Search className="size-3.5 text-text-muted" />
-
-            <span className="text-xs text-text-muted">
-              Search anything...
-            </span>
-
-            <div className="ml-auto flex items-center gap-0.5">
-              <kbd className="flex size-5 items-center justify-center rounded border border-border bg-surface-elevated text-[9px] text-text-muted">
-                ⌘
-              </kbd>
-
-              <kbd className="flex size-5 items-center justify-center rounded border border-border bg-surface-elevated text-[9px] text-text-muted">
-                K
-              </kbd>
-            </div>
-          </button>
-
-          {/* Mobile search */}
-          <IconButton className="lg:hidden" aria-label="Search">
-            <Search className="size-4.25" />
-          </IconButton>
-
           {/* Theme */}
           <IconButton aria-label="Toggle theme">
             <Sun className="size-4.25" />
-          </IconButton>
-
-          {/* Notifications */}
-          <IconButton className="relative" aria-label="Notifications">
-            <Bell className="size-4.25" />
-
-            <span className="absolute right-2 top-1.5 size-1.5 rounded-full bg-danger ring-2 ring-background" />
           </IconButton>
 
           {/* Authenticated user */}

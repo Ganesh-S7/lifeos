@@ -4,51 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
     BarChart3,
-    Briefcase,
-    CheckSquare,
-    ChevronDown,
     CircleDollarSign,
     HeartPulse,
     LayoutDashboard,
-    Settings,
-    Target,
 } from "lucide-react";
+import { isNavigationActive, sidebarNavigation } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
 import { authClient } from "@/lib/auth-client";
 import { Skeleton } from "@/components/ui";
 
-const navigation = [
-    {
-        label: "Overview",
-        href: "/dashboard",
-        icon: LayoutDashboard,
-    },
-    {
-        label: "Finance",
-        href: "/finance",
-        icon: CircleDollarSign,
-    },
-    {
-        label: "Health",
-        href: "/health",
-        icon: HeartPulse,
-    },
-    {
-        label: "Goals",
-        href: "/goals",
-        icon: Target,
-    },
-    {
-        label: "Habits & Tasks",
-        href: "/habits",
-        icon: CheckSquare,
-    },
-    {
-        label: "Career",
-        href: "/career",
-        icon: Briefcase,
-    },
-];
+const navigationIcons = {
+    "/dashboard": LayoutDashboard,
+    "/finance": CircleDollarSign,
+    "/health": HeartPulse,
+};
 
 interface SidebarProps {
     open: boolean;
@@ -63,8 +32,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     const userName =
         session?.user.name?.trim() || "Personal account";
     const initialSessionLoading = isPending && !session;
-
-    const firstName = userName.split(/\s+/)[0];
 
     const initials =
         userName
@@ -117,60 +84,27 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     </Link>
                 </div>
 
-                {/* Workspace */}
-                <div className="px-3 pt-5">
-                    <button
-                        type="button"
-                        disabled={initialSessionLoading}
-                        className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left transition-colors hover:bg-surface-elevated"
-                    >
-                        <div className="flex min-w-0 items-center gap-2.5">
-                            <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-[10px] font-semibold text-primary">
-                                {initials}
-                            </div>
-
-                            <div className="min-w-0">
-                                {initialSessionLoading ? (
-                                    <>
-                                        <Skeleton variant="text" className="w-24" />
-                                        <span className="sr-only">Loading workspace</span>
-                                    </>
-                                ) : (
-                                    <p className="truncate text-xs font-medium text-text-primary">
-                                        {firstName}&apos;s Life
-                                    </p>
-                                )}
-
-                                <p className="truncate text-[10px] text-text-muted">
-                                    Personal workspace
-                                </p>
-                            </div>
-                        </div>
-
-                        <ChevronDown className="size-3.5 shrink-0 text-text-muted" />
-                    </button>
-                </div>
-
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto px-3 pt-6">
+                <nav
+                    aria-label="Main navigation"
+                    className="flex-1 overflow-y-auto px-3 pt-6"
+                >
                     <p className="px-2.5 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
                         Workspace
                     </p>
 
                     <div className="space-y-0.5">
-                        {navigation.map((item) => {
-                            const Icon = item.icon;
+                        {sidebarNavigation.map((item) => {
+                            const Icon = navigationIcons[item.href as keyof typeof navigationIcons];
 
-                            const active =
-                                item.href === "/dashboard"
-                                    ? pathname === "/dashboard"
-                                    : pathname.startsWith(item.href);
+                            const active = isNavigationActive(pathname, item.href);
 
                             return (
                                 <Link
                                     key={item.href}
                                     href={item.href}
                                     onClick={onClose}
+                                    aria-current={active ? "page" : undefined}
                                     className={cn(
                                         "group flex h-9 items-center gap-3 rounded-md px-2.5 text-[13px] font-medium",
                                         "transition-colors",
@@ -193,30 +127,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                                 </Link>
                             );
                         })}
-                    </div>
-
-                    <div className="mt-8">
-                        <p className="px-2.5 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-                            Manage
-                        </p>
-
-                        <Link
-                            href="/settings"
-                            onClick={onClose}
-                            className={cn(
-                                "group flex h-9 items-center gap-3 rounded-md px-2.5 text-[13px] font-medium transition-colors",
-                                pathname.startsWith("/settings")
-                                    ? "bg-primary-subtle text-text-primary"
-                                    : "text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
-                            )}
-                        >
-                            <Settings
-                                className="size-4 text-text-muted group-hover:text-text-secondary"
-                                strokeWidth={1.9}
-                            />
-
-                            <span>Settings</span>
-                        </Link>
                     </div>
                 </nav>
 
