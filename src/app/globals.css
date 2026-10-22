@@ -8,7 +8,7 @@
   --normal-bg: var(--surface-elevated);
   --normal-border: var(--border);
   --normal-text: var(--text-primary);
-  --normal-bg-hover: var(--surface-subtle);
+  --normal-bg-hover: var(--surface-hover);
   --normal-border-hover: var(--border);
   font-family: var(--font-geist-sans), sans-serif;
 }
@@ -42,54 +42,60 @@
 }
 
 :root {
+  color-scheme: light;
   /* ------------------------------
      Base / Light
   -------------------------------- */
 
-  --background: #f6f6f3;
-  --foreground: #18181b;
+  --background: #f7f7f5;
+  --foreground: #171717;
 
   --surface: #ffffff;
-  --surface-subtle: #fafaf9;
+  --surface-subtle: #f0f0ed;
   --surface-elevated: #ffffff;
+  --surface-hover: #f0f0ed;
 
-  --border: #e5e5e2;
-  --border-subtle: #ededeb;
+  --border: #e5e5e0;
+  --border-subtle: #e5e5e0;
 
   /* ------------------------------
      Text
   -------------------------------- */
 
-  --text-primary: #18181b;
-  --text-secondary: #71717a;
-  --text-muted: #a1a1aa;
+  --text-primary: #171717;
+  --text-secondary: #666660;
+  --text-muted: #666660;
   --text-inverse: #ffffff;
 
   /* ------------------------------
      Brand
   -------------------------------- */
 
-  --brand: #635bda;
-  --brand-hover: #574fcc;
-  --brand-active: #4f46c5;
-  --brand-subtle: #eeecff;
+  --brand: #5146d8;
+  --brand-hover: #4338b8;
+  --brand-active: #382f9f;
+  --brand-subtle: #efedf9;
   --brand-foreground: #ffffff;
+
+  /* Sidebar-only states keep the rest of Porcelain unchanged. */
+  --sidebar-active: #efeeff;
+  --sidebar-hover: #eeeeea;
 
   /* ------------------------------
      Semantic
   -------------------------------- */
 
-  --success: #22a06b;
+  --success: #15803d;
   --success-subtle: #e9f8f1;
-  --success-foreground: #176342;
+  --success-foreground: #15803d;
 
-  --warning: #c98719;
+  --warning: #b45309;
   --warning-subtle: #fff6df;
-  --warning-foreground: #875c0b;
+  --warning-foreground: #92400e;
 
-  --danger: #d84b4b;
+  --danger: #b91c1c;
   --danger-subtle: #fff0f0;
-  --danger-foreground: #9f3030;
+  --danger-foreground: #b91c1c;
 
   --info: #3f82d7;
   --info-subtle: #edf5ff;
@@ -110,16 +116,16 @@
   -------------------------------- */
 
   --shadow-sm:
-    0 1px 2px rgba(0, 0, 0, 0.04);
+    0 1px 2px rgba(0, 0, 0, 0.03);
 
   --shadow-md:
-    0 4px 12px rgba(0, 0, 0, 0.06);
+    0 2px 8px rgba(0, 0, 0, 0.04);
 
   --shadow-lg:
-    0 12px 30px rgba(0, 0, 0, 0.08);
+    0 8px 20px rgba(0, 0, 0, 0.06);
 
   --chart-income: var(--brand);
-  --chart-expenses: #b7791f;
+  --chart-expenses: var(--warning-foreground);
 }
 
 /* --------------------------------
@@ -127,68 +133,62 @@
 --------------------------------- */
 
 .dark {
-  --background: #0c0c0f;
-  --foreground: #f4f4f5;
+  color-scheme: dark;
+  --background: #0a0c11;
+  --foreground: #f0f3f6;
 
-  --surface: #121216;
-  --surface-subtle: #101013;
-  --surface-elevated: #18181d;
+  --surface: #11151b;
+  --surface-subtle: #1d242e;
+  --surface-elevated: #171d26;
+  --surface-hover: #232b36;
 
-  --border: #29292f;
-  --border-subtle: #202025;
+  --border: #303846;
+  --border-subtle: #303846;
 
-  --text-primary: #f4f4f5;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --text-inverse: #18181b;
+  --text-primary: #f0f3f6;
+  --text-secondary: #9aa4b2;
+  --text-muted: #9aa4b2;
+  --text-inverse: #0d1117;
 
-  --brand: #756df0;
-  --brand-hover: #847cf5;
-  --brand-active: #665de5;
-  --brand-subtle: #211f3a;
-  --brand-foreground: #ffffff;
+  --brand: #818cf8;
+  --brand-hover: #a5b4fc;
+  --brand-active: #737bf2;
+  --brand-subtle: #252b45;
+  --brand-foreground: #0d1117;
 
-  --success: #35c98a;
+  --sidebar-active: var(--brand-subtle);
+  --sidebar-hover: var(--surface-hover);
+
+  --success: #4ade80;
   --success-subtle: #11291f;
-  --success-foreground: #7ce1b2;
+  --success-foreground: #4ade80;
 
-  --warning: #e0a33a;
+  --warning: #fbbf24;
   --warning-subtle: #2a2110;
-  --warning-foreground: #f0c46e;
+  --warning-foreground: #fbbf24;
 
-  --danger: #ec6b6b;
+  --danger: #f87171;
   --danger-subtle: #2d1717;
-  --danger-foreground: #f49a9a;
+  --danger-foreground: #f87171;
 
   --info: #61a0e8;
   --info-subtle: #132238;
   --info-foreground: #91bff0;
 
   --shadow-sm:
-    0 1px 2px rgba(0, 0, 0, 0.25);
+    0 1px 2px rgba(0, 0, 0, 0.12);
 
   --shadow-md:
-    0 4px 16px rgba(0, 0, 0, 0.25);
+    0 2px 8px rgba(0, 0, 0, 0.15);
 
   --shadow-lg:
-    0 16px 40px rgba(0, 0, 0, 0.35);
+    0 8px 20px rgba(0, 0, 0, 0.20);
 
   --chart-income: var(--brand);
-  --chart-expenses: #e6ac47;
+  --chart-expenses: var(--warning);
 }
 
-/* --------------------------------
-   Base
---------------------------------- */
-
-html {
-  background: var(--background);
-}
-
-/* --------------------------------
-   Base
---------------------------------- */
-
+/* Theme also applies to native form controls, scrollbars and browser surfaces. */
 html {
   background: var(--background);
 }
@@ -232,6 +232,7 @@ select:focus-visible {
   --color-surface: var(--surface);
   --color-surface-subtle: var(--surface-subtle);
   --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
 
   --color-border: var(--border);
   --color-border-subtle: var(--border-subtle);
@@ -241,6 +242,9 @@ select:focus-visible {
   --color-primary-active: var(--brand-active);
   --color-primary-subtle: var(--brand-subtle);
   --color-primary-foreground: var(--brand-foreground);
+
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-hover: var(--sidebar-hover);
 
   --color-success: var(--success);
   --color-success-subtle: var(--success-subtle);

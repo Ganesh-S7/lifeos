@@ -38,7 +38,7 @@ export function Stat({
         : "neutral");
 
   const trendToneClasses: Record<TrendTone, string> = {
-    positive: "text-success",
+    positive: "text-success-foreground",
     negative: "text-danger",
     neutral: "text-text-muted",
   };

@@ -147,7 +147,7 @@ export function HealthProgress({
                             type="button"
                             aria-label="View previous day"
                             onClick={() => navigateDay(-1)}
-                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary"
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                         >
                             <ChevronLeft
                                 className="size-4"
@@ -167,7 +167,7 @@ export function HealthProgress({
                             aria-label="View next day"
                             onClick={() => navigateDay(1)}
                             disabled={isToday || isFutureDate}
-                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <ChevronRight
                                 className="size-4"
@@ -181,7 +181,7 @@ export function HealthProgress({
                                 onClick={() =>
                                     onSelectedDateChange(todayDate)
                                 }
-                                className="ml-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-elevated"
+                                className="ml-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-hover"
                             >
                                 Today
                             </button>

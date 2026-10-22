@@ -374,7 +374,7 @@ export function HealthAnalytics({
                             }
                             className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${isActive
                                     ? "border-primary bg-surface-elevated text-text-primary"
-                                    : "border-border text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
+                                    : "border-border text-text-secondary hover:bg-surface-hover hover:text-text-primary"
                                 }`}
                             style={
                                 isActive
@@ -491,6 +491,7 @@ export function HealthAnalytics({
                                 />
 
                                 <Tooltip
+                                    cursor={{ stroke: "var(--border)" }}
                                     labelFormatter={(value) =>
                                         formatDateDisplay(
                                             String(value),

@@ -26,7 +26,7 @@ export function FinanceComparison({
 
   const toneClass =
     comparison.tone === "positive"
-      ? "text-success"
+      ? "text-success-foreground"
       : comparison.tone === "negative"
         ? "text-danger"
         : "text-text-muted";

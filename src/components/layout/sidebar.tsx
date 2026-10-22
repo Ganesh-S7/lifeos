@@ -48,14 +48,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <button
                     aria-label="Close sidebar"
                     onClick={onClose}
-                    className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] lg:hidden"
+                    className="fixed inset-0 z-40 bg-black/50 lg:hidden"
                 />
             )}
 
             <aside
                 className={cn(
                     "fixed inset-y-0 left-0 z-50 flex w-62 flex-col",
-                    "border-r border-border-subtle bg-surface-subtle",
+                    "border-r border-border-subtle bg-background",
                     "transition-transform duration-200 ease-out",
                     open ? "translate-x-0" : "-translate-x-full",
                     "lg:translate-x-0"
@@ -109,8 +109,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                                         "group flex h-9 items-center gap-3 rounded-md px-2.5 text-[13px] font-medium",
                                         "transition-colors",
                                         active
-                                            ? "bg-primary-subtle text-text-primary"
-                                            : "text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
+                                            ? "bg-sidebar-active text-primary"
+                                            : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
                                     )}
                                 >
                                     <Icon

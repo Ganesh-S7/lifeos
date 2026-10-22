@@ -95,7 +95,7 @@ export function CategoryBreakdownChart({
                                     marginBottom: 4,
                                 }}
                                 cursor={{
-                                    fill: "var(--surface-subtle)",
+                                    fill: "var(--surface-hover)",
                                 }}
                             />
 

@@ -146,6 +146,7 @@ export function WeightTrendChart({
                             />
 
                             <Tooltip
+                                cursor={{ stroke: "var(--border)" }}
                                 labelFormatter={(value) =>
                                     formatDateDisplay(String(value))
                                 }

@@ -138,7 +138,7 @@ export function ExpensesTable({
                             return (
                                 <tr
                                     key={expense.id}
-                                    className="group transition-colors hover:bg-surface-subtle"
+                                    className="group transition-colors hover:bg-surface-hover"
                                 >
                                     <td className="px-5 py-3.5">
                                         <div>

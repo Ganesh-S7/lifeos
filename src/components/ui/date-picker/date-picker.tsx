@@ -163,10 +163,10 @@ export function DatePicker({
                                 nav: "absolute inset-x-0 top-0 flex items-center justify-between",
 
                                 button_previous:
-                                    "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary",
+                                    "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary",
 
                                 button_next:
-                                    "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary",
+                                    "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary",
 
                                 chevron: defaultClassNames.chevron,
 
@@ -177,7 +177,7 @@ export function DatePicker({
                                 week: "mt-1 flex w-full",
                                 day: "flex size-9 items-center justify-center",
                                 day_button:
-                                    "inline-flex size-8 items-center justify-center rounded-md text-xs font-medium transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                                    "inline-flex size-8 items-center justify-center rounded-md text-xs font-medium transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
                                 selected:
                                     "bg-primary text-primary-foreground hover:bg-primary-hover",
                                 today: "font-semibold text-primary",

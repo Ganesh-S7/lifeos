@@ -1,10 +1,13 @@
 "use client";
 
 import { Toaster as SonnerToaster } from "sonner";
+import { useTheme } from "@/components/theme/use-theme";
 
 export function Toaster() {
+    const { theme } = useTheme();
     return (
         <SonnerToaster
+            theme={theme}
             className="lifeos-toaster"
             position="bottom-right"
             closeButton

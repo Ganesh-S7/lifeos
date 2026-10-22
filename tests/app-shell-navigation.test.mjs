@@ -142,3 +142,16 @@ test("shared shell removes inactive search, notifications and workspace dropdown
     assert.match(html, /user@example.invalid/);
     assert.match(html, /Page content/);
 });
+
+test("sidebar uses consistent workspace surfaces and scoped navigation colors on every implemented route", () => {
+    for (const pathname of ["/dashboard", "/finance", "/finance/expenses", "/health"]) {
+        state.pathname = pathname;
+        const sidebar = render(Sidebar, { open: false, onClose() {} });
+        assert.match(sidebar, /<aside[^>]*border-border-subtle bg-background/);
+        assert.doesNotMatch(sidebar, /<aside[^>]*shadow-/);
+        assert.match(sidebar, /aria-current="page"[^>]*bg-sidebar-active text-primary/);
+        assert.match(sidebar, /hover:bg-sidebar-hover/);
+        const shell = render(AppShell, { children: "Page content" });
+        assert.match(shell, /<header[^>]*border-border-subtle bg-background/);
+    }
+});

@@ -55,7 +55,7 @@ export function NetWorthBreakdownDialog({
                     </div>
                     <div className="flex justify-between gap-4 border-t border-border pt-3 text-base font-semibold text-text-primary">
                         <dt>Net worth</dt>
-                        <dd className={`tabular-nums ${netWorth < 0 ? "text-danger" : "text-success"}`}>
+                        <dd className={`tabular-nums ${netWorth < 0 ? "text-danger" : "text-success-foreground"}`}>
                             {formatCurrency(netWorth)}
                         </dd>
                     </div>

@@ -72,7 +72,7 @@ export default function LoginPage() {
     }
 
     return (
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-lg shadow-black/5 sm:p-7">
+        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-7">
             <div className="mb-7">
                 <p className="text-sm font-medium text-primary">
                     WELCOME BACK

@@ -174,7 +174,7 @@ export function HealthOverview() {
                         type="button"
                         onClick={() => setTargetsDialogOpen(true)}
                         disabled={initialLoading}
-                        className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Manage targets
                     </button>

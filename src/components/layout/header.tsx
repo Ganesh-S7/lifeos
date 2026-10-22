@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, Menu, Sun } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Breadcrumbs } from "./breadcrumbs";
 import { IconButton, Skeleton } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
@@ -62,7 +63,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 h-16 border-b border-border-subtle bg-background/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 h-16 border-b border-border-subtle bg-background">
       <div className="flex h-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Left */}
         <div className="flex min-w-0 items-center gap-3">
@@ -80,9 +81,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Right */}
         <div className="flex items-center gap-1.5">
           {/* Theme */}
-          <IconButton aria-label="Toggle theme">
-            <Sun className="size-4.25" />
-          </IconButton>
+          <ThemeToggle />
 
           {/* Authenticated user */}
           <div className="ml-1 flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5">
@@ -119,7 +118,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             disabled={isSigningOut || isPending || !session}
             aria-label="Sign out"
             title="Sign out"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSigningOut ? (
               <span

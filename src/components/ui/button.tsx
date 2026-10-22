@@ -21,16 +21,16 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active",
 
   secondary:
-    "border border-border bg-surface-elevated text-text-primary hover:bg-surface-subtle",
+    "border border-border bg-surface-elevated text-text-primary hover:bg-surface-hover",
 
   outline:
-    "border border-border bg-transparent text-text-primary hover:bg-surface-elevated",
+    "border border-border bg-transparent text-text-primary hover:bg-surface-hover",
 
   ghost:
-    "text-text-secondary hover:bg-surface-elevated hover:text-text-primary",
+    "text-text-secondary hover:bg-surface-hover hover:text-text-primary",
 
   danger:
-    "bg-danger text-white hover:opacity-90",
+    "bg-danger text-text-inverse hover:opacity-90",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

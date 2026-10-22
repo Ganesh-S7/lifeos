@@ -39,6 +39,7 @@ export function FinanceCharts({ data }: { data: FinanceChartPoint[] }) {
                                 <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
                                 <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Math.round(value / 1000)}k`} />
                                 <Tooltip
+                                    cursor={{ stroke: "var(--border)" }}
                                     formatter={(value) => value == null ? "Unavailable" : formatCurrency(Number(value))}
                                     contentStyle={{
                                         backgroundColor: "var(--surface-elevated)",
@@ -85,6 +86,7 @@ export function FinanceCharts({ data }: { data: FinanceChartPoint[] }) {
                                 <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
                                 <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Math.round(value / 1000)}k`} />
                                 <Tooltip
+                                    cursor={{ fill: "var(--surface-hover)" }}
                                     formatter={(value) => value == null ? "Unavailable" : formatCurrency(Number(value))}
                                     contentStyle={{
                                         backgroundColor: "var(--surface-elevated)",
@@ -99,7 +101,11 @@ export function FinanceCharts({ data }: { data: FinanceChartPoint[] }) {
                                         marginBottom: 4,
                                     }}
                                 />
-                                <Legend />
+                                <Legend
+                                    formatter={(value) => (
+                                        <span className="text-text-secondary">{value}</span>
+                                    )}
+                                />
                                 <Bar
                                     dataKey="income"
                                     name="Income"

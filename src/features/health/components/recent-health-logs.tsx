@@ -134,7 +134,7 @@ export function RecentHealthLogs({
                                         type="button"
                                         onClick={() => onEdit(log)}
                                         aria-label={`Edit health log for ${formatDateDisplay(log.date)}`}
-                                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-elevated"
+                                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-hover"
                                     >
                                         <Settings2
                                             className="size-3.5"

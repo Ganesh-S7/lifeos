@@ -45,7 +45,7 @@ function ProductPreview() {
     return (
         <div className="mt-8 grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-2 lg:mt-10">
             {/* Finance preview */}
-            <div className="rounded-2xl border border-border bg-surface/80 p-4 transition-colors hover:bg-surface-elevated">
+            <div className="rounded-2xl border border-border bg-surface p-4 transition-colors hover:bg-surface-hover">
                 <div className="flex items-center gap-3">
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary">
                         <WalletCards
@@ -88,7 +88,7 @@ function ProductPreview() {
             </div>
 
             {/* Health preview */}
-            <div className="rounded-2xl border border-border bg-surface/80 p-4 transition-colors hover:bg-surface-elevated">
+            <div className="rounded-2xl border border-border bg-surface p-4 transition-colors hover:bg-surface-hover">
                 <div className="flex items-center gap-3">
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-success-subtle text-success">
                         <HeartPulse
@@ -137,17 +137,6 @@ export default function AuthLayout({
         <div className="min-h-screen bg-background text-text-primary lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
             {/* Branding and illustration */}
             <aside className="relative isolate flex flex-col overflow-hidden border-b border-border bg-surface-subtle px-5 py-6 sm:px-8 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-10 lg:py-9 xl:px-14">
-                {/* Decorative brand accents */}
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -left-28 -top-28 size-80 rounded-full bg-primary/10 blur-3xl"
-                />
-
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -bottom-32 -right-20 size-80 rounded-full bg-primary/5 blur-3xl"
-                />
-
                 <div className="relative">
                     <BrandLogo />
                 </div>
@@ -156,7 +145,7 @@ export default function AuthLayout({
                     <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary">
                         <Sparkles
                             size={14}
-                            className="text-primary"
+                            className="text-text-muted"
                             aria-hidden="true"
                         />
 
@@ -165,7 +154,7 @@ export default function AuthLayout({
 
                     <h2 className="mt-6 max-w-lg text-3xl font-semibold leading-tight tracking-tight text-text-primary sm:text-4xl xl:text-5xl">
                         Make room for{" "}
-                        <span className="text-primary">
+                        <span className="text-text-primary">
                             what matters.
                         </span>
                     </h2>

@@ -23,7 +23,7 @@ export const DialogOverlay = forwardRef<
         <DialogPrimitive.Overlay
             ref={ref}
             className={cn(
-                "fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px]",
+                "fixed inset-0 z-50 bg-black/55",
                 "transition-opacity duration-200",
                 "data-[state=closed]:opacity-0 data-[state=open]:opacity-100",
                 className
@@ -64,7 +64,7 @@ export const DialogContent = forwardRef<
                     className={cn(
                         "absolute right-4 top-4 rounded-md p-1.5",
                         "text-text-muted transition-colors",
-                        "hover:bg-surface-elevated hover:text-text-primary",
+                        "hover:bg-surface-hover hover:text-text-primary",
                         "focus-visible:outline-none focus-visible:ring-2",
                         "focus-visible:ring-primary/40"
                     )}
