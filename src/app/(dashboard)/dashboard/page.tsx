@@ -4,6 +4,7 @@ import { SpendingOverview } from "@/features/dashboard/components/spending-overv
 import { HealthOverview } from "@/features/dashboard/components/health-overview";
 import { GoalsOverview } from "@/features/dashboard/components/goals-overview";
 import { RecentActivity } from "@/features/dashboard/components/recent-activity";
+import { OverviewAnalysis } from "@/features/dashboard/components/overview-analysis";
 
 export default function DashboardPage() {
     return (
@@ -12,6 +13,7 @@ export default function DashboardPage() {
 
             <OverviewStats />
             <HealthOverview />
+            <OverviewAnalysis />
 
             <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
                 <SpendingOverview />
