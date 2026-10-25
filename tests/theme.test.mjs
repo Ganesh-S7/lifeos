@@ -194,23 +194,23 @@ test("SSR uses light markup even if a client document already has the saved dark
     assert.doesNotMatch(layout, /className="dark"/);
 });
 
-test("Refined slate and Porcelain palettes match the agreed colors and use theme-aware native controls", () => {
+test("current light and dark palettes match the intended colors and use theme-aware native controls", () => {
     const css = readFileSync(new URL("app/globals.css", root), "utf8");
     const light = css.match(/:root\s*\{([\s\S]*?)\n\}/)[1];
     const dark = css.match(/\.dark\s*\{([\s\S]*?)\n\}/)[1];
     for (const [block, colors] of [
         [light, {
-            background: "#f7f7f5", surface: "#ffffff", "surface-elevated": "#ffffff",
+            background: "#f7f7f5", surface: "#f5f5f5", "surface-elevated": "#ffffff",
             "text-primary": "#171717", "text-secondary": "#666660", border: "#e5e5e0",
             brand: "#5146d8", "brand-hover": "#4338b8", "brand-foreground": "#ffffff",
             "surface-hover": "#f0f0ed", success: "#15803d", warning: "#b45309", danger: "#b91c1c",
             "sidebar-active": "#efeeff", "sidebar-hover": "#eeeeea", info: "#3f82d7",
         }],
         [dark, {
-            background: "#0d1117", surface: "#151b23", "surface-elevated": "#1c232d",
+            background: "#0a0c11", surface: "#11151b", "surface-elevated": "#171d26",
             "text-primary": "#f0f3f6", "text-secondary": "#9aa4b2", border: "#303846",
             brand: "#818cf8", "brand-hover": "#a5b4fc", "brand-foreground": "#0d1117",
-            "surface-subtle": "#242c38", "surface-hover": "#242c38", success: "#4ade80",
+            "surface-subtle": "#1d242e", "surface-hover": "#232b36", success: "#4ade80",
             warning: "#fbbf24", danger: "#f87171", info: "#61a0e8",
         }],
     ]) {
