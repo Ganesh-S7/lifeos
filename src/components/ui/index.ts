@@ -13,3 +13,4 @@ export * from "./delete-modal";
 export * from "./skeleton";
 export * from "./content-skeletons";
 export * from "./load-error";
+export * from "./info-tooltip";

@@ -23,7 +23,7 @@ globalThis[Symbol.for(key)] = boundary;
 const ref = `globalThis[Symbol.for(${JSON.stringify(key)})]`;
 const chartNames = [
     "Bar", "BarChart", "CartesianGrid", "Legend", "Line", "LineChart",
-    "ResponsiveContainer", "Tooltip", "XAxis", "YAxis",
+    "ResponsiveContainer", "Tooltip", "XAxis", "YAxis", "Pie", "PieChart",
 ];
 const stubs = {
     "@/features/finance/store/finance-store": `export function useFinance() { return ${ref}.finance; }`,
@@ -35,7 +35,7 @@ const stubs = {
     "next/link": `import React from 'react'; export default function Link({children, ...props}) {
         return React.createElement('a', props, children);
     }`,
-    "@/components/ui": ["card", "skeleton", "content-skeletons", "load-error", "button"].map(
+    "@/components/ui": ["card", "skeleton", "content-skeletons", "load-error", "button", "stat", "info-tooltip"].map(
         (name) => `export * from ${JSON.stringify(new URL(`components/ui/${name}.tsx`, root).href)};`,
     ).join("\n"),
     recharts: `import React from 'react'; ${chartNames.map((name) => `
@@ -78,6 +78,8 @@ registerHooks({
 const { OverviewAnalysis, IncomeExpensesChart, WeightTrendChart } = await import(
     "../src/features/dashboard/components/overview-analysis.tsx"
 );
+const { SpendingOverview } = await import("../src/features/dashboard/components/spending-overview.tsx");
+const { OverviewStats } = await import("../src/features/dashboard/components/overview-stats.tsx");
 const empty = () => ({ accounts: [], investments: [], liabilities: [], transactions: [], positionHistory: [] });
 const transaction = (type, amount, date, recordedAt = "2030-01-01T12:00:00Z") => ({
     id: `${type}-${date}`, type, amount, date, recordedAt, description: type, accountId: "bank",
@@ -149,7 +151,8 @@ test("ordinary cash-flow aggregation excludes every transfer and investment tran
     assert.match(html, /Monthly income vs expenses/);
     assert.equal(chart("BarChart").data.at(-1).income, 800);
     assert.equal(chart("BarChart").data.at(-1).expenses, 120);
-    assert.match(html, /View monthly totals/);
+    assert.doesNotMatch(html, /<details|<summary|View monthly totals/);
+    assert.match(html, /class="sr-only"><table/);
     assert.match(html, /Transfers and investment trades are excluded/);
 });
 
@@ -245,21 +248,23 @@ test("weight chart masks another user's data and pending or signed-out sessions"
     }
 });
 
-test("weight SVG receives the real ordered daily series, no gap interpolation, correct units and accessible alternatives", () => {
+test("weight chart connects only actual ordered measurements with correct units and hidden accessible data", () => {
     boundary.health.logs = [log(today, 70.4), log(daysAgo(2), 71.1), log(daysAgo(1), undefined)];
     const html = render(WeightTrendChart);
     assert.equal(chart("LineChart").accessibilityLayer, true);
     assert.match(chart("LineChart")["aria-label"], /kilograms/);
     const points = chart("LineChart").data;
-    assert.equal(points.length, 90);
+    assert.equal(points.length, 2);
     assert.equal(points.at(-1).weightKg, 70.4);
-    assert.equal(points.at(-2).weightKg, undefined);
-    assert.equal(points.at(-3).weightKg, 71.1);
-    assert.equal(chart("Line").connectNulls, false);
+    assert.equal(points.at(-2).weightKg, 71.1);
+    assert.equal(points.at(-2).date, daysAgo(2));
+    assert.ok(points.every((point) => Number.isFinite(point.weightKg)));
+    assert.equal(chart("Line").connectNulls, true);
     assert.equal(chart("Line").type, "linear");
     assert.equal(chart("Tooltip").formatter(70.4), "70.4 kg");
     assert.equal(chart("Tooltip").labelFormatter(today), formatDateDisplay(today));
-    assert.match(html, /View recorded weights/);
+    assert.doesNotMatch(html, /<details|<summary|View recorded weights/);
+    assert.match(html, /class="sr-only"><table/);
     assert.match(html, /70\.4 kg/);
     assert.match(html, /71\.1 kg/);
     assert.equal((html.match(/scope="row"/g) ?? []).length, 2);
@@ -278,6 +283,91 @@ test("Finance updates and failed refreshes show saved chart data with an explici
     assert.match(html, /Retry refresh/);
     assert.doesNotMatch(html, /PRIVATE_REFRESH_ERROR/);
     assert.equal(chart("Tooltip").formatter(1000), formatCurrency(1000));
+});
+
+test("weight rendering rejects invalid measurements while retaining the valid dated records", () => {
+    boundary.health.logs = [
+        log(today, 70.4), log(daysAgo(1), undefined), log(daysAgo(2), NaN),
+        log(daysAgo(3), Infinity), log(daysAgo(4), 0), log(daysAgo(5), -5),
+        log(daysAgo(6), "invalid"), log(daysAgo(7), 71.1),
+    ];
+    render(WeightTrendChart);
+    assert.deepEqual(chart("LineChart").data, [
+        { date: daysAgo(7), weightKg: 71.1 }, { date: today, weightKg: 70.4 },
+    ]);
+});
+
+test("spending donut uses actual through-today category totals and excludes other transaction types", () => {
+    boundary.finance.data.transactions = [
+        { ...transaction("expense", 90, today), category: "Food" },
+        { ...transaction("expense", 10, today), category: "Food" },
+        { ...transaction("expense", 25, today), category: "Transport" },
+        { ...transaction("expense", 9999, daysAgo(-1)), category: "Bills" },
+        { ...transaction("expense", 9999, "2001-01-01"), category: "Bills" },
+        transaction("income", 5000, today), transaction("transfer", 5000, today),
+        transaction("investment_purchase", 5000, today), transaction("investment_sale", 5000, today),
+    ];
+    const html = render(SpendingOverview);
+    assert.deepEqual(chart("Pie").data.map(({ category, amount }) => [category, amount]), [["Food", 100], ["Transport", 25]]);
+    assert.equal(chart("Pie").dataKey, "amount");
+    assert.equal(chart("Pie").innerRadius, "58%");
+    assert.ok(chart("Pie").data.every((slice) => /^var\(--chart-/.test(slice.fill)));
+    assert.match(html, /Spending category totals/);
+    assert.match(html, /80%/);
+    assert.match(html, /20%/);
+    assert.match(html, /₹125/);
+    assert.doesNotMatch(html, /Bills|9,999|5,000|style="width:/);
+    assert.equal(chart("Tooltip").formatter(100), formatCurrency(100));
+});
+
+test("spending donut keeps empty, loading and API-failure states honest and retryable", () => {
+    let html = render(SpendingOverview);
+    assert.match(html, /No expenses recorded this month yet/);
+    assert.equal(chart("Pie"), undefined);
+    boundary.finance.ready = false;
+    html = render(SpendingOverview);
+    assert.match(html, /Loading spending by category/);
+    assert.match(html, /aria-busy="true"/);
+    boundary.finance.loadError = "PRIVATE_DATABASE_DETAILS";
+    html = render(SpendingOverview);
+    assert.match(html, /Unable to load your spending/);
+    assert.doesNotMatch(html, /PRIVATE_DATABASE_DETAILS|data-chart/);
+    const error = nodes(SpendingOverview()).find((node) => node.type.name === "LoadError");
+    error.props.onRetry();
+    assert.equal(boundary.financeRetries, 1);
+    assert.equal(chart("Pie"), undefined);
+});
+
+test("all four Overview stats share one supporting row and accessible contextual explanations", () => {
+    boundary.finance.data.transactions = [transaction("income", 800, today), transaction("expense", 120, today)];
+    boundary.health.logs = [{ ...log(today, 70.4), sleepMinutes: 420 }];
+    boundary.health.targets = { weightGoalKg: 65, updatedAt: "test" };
+    const html = render(OverviewStats);
+    for (const label of ["About monthly spending", "About net cash flow", "About weight", "About latest sleep"]) {
+        assert.ok(html.includes(`aria-label="${label}"`), label);
+    }
+    assert.equal((html.match(/class="mt-auto pt-3"/g) ?? []).length, 4);
+    assert.equal((html.match(/aria-describedby=/g) ?? []).length, 4);
+    assert.match(html, /Goal: 65 kg/);
+    assert.match(html, /same elapsed days/);
+    assert.match(html, /excluding transfers and investment trades/);
+    assert.ok(html.includes(formatDateDisplay(today)));
+});
+
+test("expense and category tokens are theme aware without borrowing status colors", () => {
+    const css = readFileSync(new URL("app/globals.css", root), "utf8");
+    const blocks = [css.match(/:root\s*\{([\s\S]*?)\n\}/)[1], css.match(/\.dark\s*\{([\s\S]*?)\n\}/)[1]];
+    for (const [index, block] of blocks.entries()) {
+        assert.ok(block.includes(`--chart-expenses: ${index === 0 ? "#a65f70" : "#d48d9d"};`));
+        assert.match(block, /--chart-income: var\(--brand\)/);
+        assert.doesNotMatch(block, /--chart-expenses: var\(--(?:warning|danger)/);
+        for (let category = 3; category <= 7; category++) assert.ok(block.includes(`--chart-category-${category}:`));
+    }
+    const financeChart = readFileSync(new URL("features/finance/components/overview/finance-charts.tsx", root), "utf8");
+    assert.match(financeChart, /fill="var\(--chart-expenses\)"/);
+    boundary.finance.data.transactions = [transaction("expense", 25, today)];
+    render(IncomeExpensesChart);
+    assert.equal(boundary.chartProps.find((props) => props.component === "Bar" && props.dataKey === "expenses").fill, "var(--chart-expenses)");
 });
 
 test("chart surfaces, axes, legends and tooltips follow semantic theme tokens and responsive sizing", () => {

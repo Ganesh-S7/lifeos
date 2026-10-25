@@ -65,7 +65,7 @@ boundary.useForm = (options) => {
 const uiNames = [
     "Button", "Dialog", "DialogContent", "DialogDescription", "DialogFooter", "DialogHeader", "DialogTitle",
     "DropdownMenu", "DropdownMenuContent", "DropdownMenuItem", "DropdownMenuTrigger", "DatePicker", "Input", "Select",
-    "LoadError", "Skeleton", "SkeletonRegion", "Card",
+    "LoadError", "Skeleton", "SkeletonRegion", "Card", "InfoTooltip",
 ];
 const stubs = {
     "@/features/finance/store/finance-store": `

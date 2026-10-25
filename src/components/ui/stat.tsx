@@ -8,24 +8,28 @@ type TrendTone = "positive" | "negative" | "neutral";
 
 interface StatProps {
   label: string;
+  labelInfo?: ReactNode;
   value: string;
   description?: string;
   trend?: Trend;
   trendTone?: TrendTone;
   icon?: LucideIcon;
   footer?: ReactNode;
+  footerClassName?: string;
   action?: ReactNode;
   className?: string;
 }
 
 export function Stat({
   label,
+  labelInfo,
   value,
   description,
   trend = "neutral",
   trendTone,
   icon: Icon,
   footer,
+  footerClassName,
   action,
   className,
 }: StatProps) {
@@ -53,9 +57,10 @@ export function Stat({
     <Card className={cn("flex flex-col p-5", className)}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-text-secondary">
-            {label}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium text-text-secondary">{label}</p>
+            {labelInfo}
+          </div>
 
           <p className="mt-2 text-2xl font-semibold tracking-tight text-text-primary">
             {value}
@@ -88,7 +93,7 @@ export function Stat({
         </div>
       )}
 
-      {footer && <div className="mt-2">{footer}</div>}
+      {footer && <div className={cn("mt-2", footerClassName)}>{footer}</div>}
 
       {action && (
         <div className="mt-auto border-t border-border-subtle pt-2">

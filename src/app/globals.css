@@ -125,7 +125,12 @@
     0 8px 20px rgba(0, 0, 0, 0.06);
 
   --chart-income: var(--brand);
-  --chart-expenses: var(--warning-foreground);
+  --chart-expenses: #a65f70;
+  --chart-category-3: #647c86;
+  --chart-category-4: #84708e;
+  --chart-category-5: #7d805b;
+  --chart-category-6: #5e738f;
+  --chart-category-7: #88746c;
 }
 
 /* --------------------------------
@@ -185,7 +190,12 @@
     0 8px 20px rgba(0, 0, 0, 0.20);
 
   --chart-income: var(--brand);
-  --chart-expenses: var(--warning);
+  --chart-expenses: #d48d9d;
+  --chart-category-3: #91adb7;
+  --chart-category-4: #b49ec0;
+  --chart-category-5: #b1b48a;
+  --chart-category-6: #98acc8;
+  --chart-category-7: #bea69b;
 }
 
 /* Theme also applies to native form controls, scrollbars and browser surfaces. */

@@ -24,7 +24,7 @@ const stubs = {
     "next/link": `import React from 'react'; export default function Link({children, ...props}) {
         return React.createElement('a', props, children);
     }`,
-    "@/components/ui": ["card", "stat", "progress", "skeleton", "load-error"].map(
+    "@/components/ui": ["card", "stat", "progress", "skeleton", "load-error", "info-tooltip"].map(
         (name) => `export * from ${JSON.stringify(new URL(`components/ui/${name}.tsx`, root).href)};`,
     ).join("\n"),
 };

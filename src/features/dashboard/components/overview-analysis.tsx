@@ -18,7 +18,7 @@ import { Card, ChartSkeleton, LoadError, SkeletonRegion } from "@/components/ui"
 import { FinanceRefreshNotice } from "@/features/finance/components/finance-refresh-notice";
 import { useFinance } from "@/features/finance/store/finance-store";
 import { buildFinanceChartData } from "@/features/finance/utils/finance-chart-data";
-import { getHealthAnalyticsTrend, getWeightTrend } from "@/features/health/utils/health-calculations";
+import { getWeightTrend } from "@/features/health/utils/health-calculations";
 import { formatHealthNumber } from "@/features/health/utils/health-formatters";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateDisplay, parseDateValue } from "@/lib/utils/date";
@@ -149,30 +149,27 @@ export function IncomeExpensesChart() {
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
-                            <details className="text-xs text-text-secondary">
-                                <summary className="cursor-pointer font-medium">View monthly totals</summary>
-                                <div className="mt-2 overflow-auto">
-                                    <table className="w-full text-left tabular-nums">
-                                        <caption className="sr-only">Monthly income and ordinary expenses in INR</caption>
-                                        <thead>
-                                            <tr>
-                                                <th scope="col" className="py-2 pr-3">Month</th>
-                                                <th scope="col" className="py-2 pr-3">Income</th>
-                                                <th scope="col" className="py-2">Expenses</th>
+                            <div className="sr-only">
+                                <table className="w-full text-left tabular-nums">
+                                    <caption className="sr-only">Monthly income and ordinary expenses in INR</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" className="py-2 pr-3">Month</th>
+                                            <th scope="col" className="py-2 pr-3">Income</th>
+                                            <th scope="col" className="py-2">Expenses</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {points.map((point) => (
+                                            <tr key={point.month} className="border-t border-border-subtle">
+                                                <th scope="row" className="py-2 pr-3 font-normal">{point.month}</th>
+                                                <td className="py-2 pr-3">{formatCurrency(point.income)}</td>
+                                                <td className="py-2">{formatCurrency(point.expenses)}</td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {points.map((point) => (
-                                                <tr key={point.month} className="border-t border-border-subtle">
-                                                    <th scope="row" className="py-2 pr-3 font-normal">{point.month}</th>
-                                                    <td className="py-2 pr-3">{formatCurrency(point.income)}</td>
-                                                    <td className="py-2">{formatCurrency(point.expenses)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </details>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                             <p className="text-xs text-text-muted">Transfers and investment trades are excluded. Months without activity total zero.</p>
                         </>
                     )}
@@ -185,8 +182,9 @@ export function IncomeExpensesChart() {
 export function WeightTrendChart() {
     const { logs, ready, failed, retry } = useDashboardHealth();
     const now = new Date();
-    const points = ready ? getHealthAnalyticsTrend(logs, now, 90) : [];
-    const measurements = ready ? getWeightTrend(logs, now, 90) : [];
+    const measurements = ready
+        ? getWeightTrend(logs, now, 90).filter((point) => Number.isFinite(point.weightKg) && point.weightKg > 0)
+        : [];
 
     return (
         <AnalysisCard
@@ -217,7 +215,7 @@ export function WeightTrendChart() {
                     <div className="h-64 w-full min-w-0">
                         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <LineChart
-                                data={points}
+                                data={measurements}
                                 accessibilityLayer
                                 aria-label="Recorded body weight over the last 90 days in kilograms"
                                 margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
@@ -257,35 +255,32 @@ export function WeightTrendChart() {
                                     stroke="var(--brand)"
                                     strokeWidth={2}
                                     dot={{ r: 3, fill: "var(--brand)", strokeWidth: 0 }}
-                                    connectNulls={false}
+                                    connectNulls
                                     isAnimationActive={false}
                                 />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
-                    <details className="text-xs text-text-secondary">
-                        <summary className="cursor-pointer font-medium">View recorded weights</summary>
-                        <div className="mt-2 max-h-48 overflow-auto">
-                            <table className="w-full text-left tabular-nums">
-                                <caption className="sr-only">Recorded weight measurements in kilograms</caption>
-                                <thead>
-                                    <tr>
-                                        <th scope="col" className="py-2 pr-3">Date</th>
-                                        <th scope="col" className="py-2">Weight</th>
+                    <div className="sr-only">
+                        <table className="w-full text-left tabular-nums">
+                            <caption className="sr-only">Recorded weight measurements in kilograms</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col" className="py-2 pr-3">Date</th>
+                                    <th scope="col" className="py-2">Weight</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {measurements.map((point) => (
+                                    <tr key={point.date} className="border-t border-border-subtle">
+                                        <th scope="row" className="py-2 pr-3 font-normal">{formatDateDisplay(point.date)}</th>
+                                        <td className="py-2">{formatHealthNumber(point.weightKg)} kg</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {measurements.map((point) => (
-                                        <tr key={point.date} className="border-t border-border-subtle">
-                                            <th scope="row" className="py-2 pr-3 font-normal">{formatDateDisplay(point.date)}</th>
-                                            <td className="py-2">{formatHealthNumber(point.weightKg)} kg</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </details>
-                    <p className="text-xs text-text-muted">Only recorded weights are shown. Gaps mark days without a measurement.</p>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="text-xs text-text-muted">Successive recorded weights are connected. No measurements are added for missing days.</p>
                 </>
             )}
         </AnalysisCard>

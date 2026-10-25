@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Moon, Scale } from "lucide-react";
-import { LoadError, Skeleton, SkeletonRegion, Stat } from "@/components/ui";
+import { InfoTooltip, LoadError, Skeleton, SkeletonRegion, Stat } from "@/components/ui";
 import { formatDateDisplay } from "@/lib/utils/date";
 import { getLatestSleepLog, getLatestWeightLog } from "@/features/health/utils/health-calculations";
 import { formatHealthDuration, formatHealthNumber } from "@/features/health/utils/health-formatters";
@@ -45,19 +45,36 @@ export function HealthStats() {
             <Stat
                 label="Weight"
                 value={weight?.weightKg !== undefined ? `${formatHealthNumber(weight.weightKg)} kg` : "—"}
-                description={`${weightDescription}${weightGoal}`}
+                className="min-w-0"
+                labelInfo={
+                    <InfoTooltip label="About weight">
+                        Latest recorded weight. {weightDescription}{weightGoal}. Record your measurements and target in Health.
+                    </InfoTooltip>
+                }
                 icon={Scale}
-                footer={!weight && (
-                    <Link href="/health" className="text-xs font-medium text-primary hover:underline">
-                        Record your measurements in Health
-                    </Link>
+                footerClassName="mt-auto pt-3"
+                footer={weight ? (
+                    <span className="text-xs text-text-secondary">{weightDescription}</span>
+                ) : (
+                    <Link href="/health" className="text-xs font-medium text-primary hover:underline">No weight recorded yet</Link>
                 )}
             />
             <Stat
                 label="Latest sleep"
                 value={sleep?.sleepMinutes !== undefined ? formatHealthDuration(sleep.sleepMinutes) : "—"}
-                description={sleep ? `Recorded ${formatDateDisplay(sleep.date)}` : "No sleep records yet"}
+                className="min-w-0"
+                labelInfo={
+                    <InfoTooltip label="About latest sleep">
+                        Your latest recorded sleep measurement{sleep ? `, recorded ${formatDateDisplay(sleep.date)}` : "; no sleep records yet"}.
+                    </InfoTooltip>
+                }
                 icon={Moon}
+                footerClassName="mt-auto pt-3"
+                footer={sleep ? (
+                    <span className="text-xs text-text-secondary">Recorded {formatDateDisplay(sleep.date)}</span>
+                ) : (
+                    <Link href="/health" className="text-xs font-medium text-primary hover:underline">No sleep records yet</Link>
+                )}
             />
         </>
     );

@@ -31,6 +31,7 @@ const stubs = {
     "@/components/ui": `import React from 'react';
         export function Card({children}) { return React.createElement('div', null, children); }
         export function Button({children, onClick}) { return React.createElement('button', {onClick}, children); }
+        export function InfoTooltip({children}) { return React.createElement("span", {className: "sr-only"}, children); }
         export function Stat({label, value, description, footer}) {
             return React.createElement('div', null, label, value, description, footer);
         }
@@ -124,7 +125,7 @@ test("dashboard keeps loading, initial failure, and recoverable background error
     assert.match(render(SpendingOverview), /Loading/);
     state({ ready: false, loadError: "Cannot load Finance" });
     assert.match(render(OverviewStats), /Cannot load Finance.*Retry/);
-    assert.match(render(SpendingOverview), /Cannot load Finance.*Retry/);
+    assert.match(render(SpendingOverview), /Unable to load your spending.*Retry/);
     state({ refreshError: "Saved records retained" });
     assert.match(render(SpendingOverview), /Saved records retained.*Retry refresh/);
     assert.ok(render(OverviewStats).includes(formatCurrency(0)));

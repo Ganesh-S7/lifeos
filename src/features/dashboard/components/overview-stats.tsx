@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeftRight, Wallet } from "lucide-react";
-import { LoadError, Skeleton, SkeletonRegion, Stat } from "@/components/ui";
+import { InfoTooltip, LoadError, Skeleton, SkeletonRegion, Stat } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils/currency";
 import { useFinance } from "@/features/finance/store/finance-store";
 import { monthlyActivityComparison } from "@/features/finance/utils/finance-comparisons";
@@ -38,15 +38,29 @@ export function OverviewStats() {
                         <Stat
                             label="Monthly spending"
                             value={formatCurrency(activity.current.expenses)}
-                            description="Ordinary expenses through today"
+                            className="min-w-0"
+                            labelInfo={
+                                <InfoTooltip label="About monthly spending">
+                                    Ordinary expenses from the start of this month through today, compared with the same elapsed days
+                                    of the previous month (capped at that month&apos;s end). Transfers and investment trades are excluded.
+                                </InfoTooltip>
+                            }
                             icon={Wallet}
+                            footerClassName="mt-auto pt-3"
                             footer={<FinanceComparison comparison={activity.expenses} period="vs previous period" />}
                         />
                         <Stat
                             label="Net cash flow"
                             value={formatCurrency(activity.current.netCashFlow)}
-                            description="Income minus expenses through today"
+                            className="min-w-0"
+                            labelInfo={
+                                <InfoTooltip label="About net cash flow">
+                                    Income minus ordinary expenses through today, excluding transfers and investment trades.
+                                    The comparison uses the same elapsed days of the previous month, capped at that month&apos;s end.
+                                </InfoTooltip>
+                            }
                             icon={ArrowLeftRight}
+                            footerClassName="mt-auto pt-3"
                             footer={<FinanceComparison comparison={activity.netCashFlow} period="vs previous period" />}
                         />
                     </>
