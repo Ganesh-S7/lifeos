@@ -16,6 +16,15 @@ const ref = `globalThis[Symbol.for(${JSON.stringify(key)})]`;
 const root = new URL("../src/", import.meta.url);
 const stubs = {
     "@/features/finance/store/finance-store": `export function useFinance() { return ${ref}.state; }`,
+    "@/lib/auth-client": `export const authClient = {
+        useSession() { return { data: { user: { id: 'finance-render-user' } }, isPending: false }; }
+    };`,
+    "@/features/health/store/health-store": `
+        export function useHealthHydration() {}
+        export function useHealthStore() {
+            return { logs: [], targets: null, ready: true, activeUserId: 'finance-render-user', loadError: null };
+        }
+    `,
     "next/link": `import React from 'react'; export default function Link({children, href}) {
         return React.createElement('a', {href}, children);
     }`,
@@ -44,6 +53,14 @@ registerHooks({
             for (const extension of [".ts", ".tsx"]) {
                 const url = file.href + extension;
                 if (existsSync(new URL(url))) return nextResolve(url, context);
+            }
+        }
+        if (specifier.startsWith(".") && context.parentURL?.startsWith(root.href)) {
+            const file = new URL(specifier, context.parentURL);
+            for (const extension of [".ts", ".tsx"]) {
+                if (existsSync(new URL(file.href + extension))) {
+                    return nextResolve(file.href + extension, context);
+                }
             }
         }
         return nextResolve(specifier, context);
@@ -122,8 +139,6 @@ test("empty chart history renders honest empty states instead of chart samples",
     assert.doesNotMatch(markup, /illustrative|sample/i);
 });
 
-test("remaining shared dashboard mocks contain no financial statistics or financial activity", async () => {
-    const { overviewStats, recentActivity } = await import("../src/features/dashboard/data/mock-data.ts");
-    assert.ok(overviewStats.every((stat) => !/spend|saving|net worth|balance/i.test(stat.label)));
-    assert.ok(recentActivity.every((activity) => activity.type !== "finance" && !/₹/.test(activity.description)));
+test("the dashboard no longer ships the fabricated shared data source", () => {
+    assert.equal(existsSync(new URL("../src/features/dashboard/data/mock-data.ts", import.meta.url)), false);
 });

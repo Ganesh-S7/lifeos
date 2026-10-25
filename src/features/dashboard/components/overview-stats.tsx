@@ -1,15 +1,13 @@
 "use client";
 
-import { ArrowLeftRight, CircleDollarSign, HeartPulse, Wallet } from "lucide-react";
+import { ArrowLeftRight, Wallet } from "lucide-react";
 import { LoadError, Skeleton, SkeletonRegion, Stat } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils/currency";
 import { useFinance } from "@/features/finance/store/finance-store";
 import { monthlyActivityComparison } from "@/features/finance/utils/finance-comparisons";
 import { FinanceComparison } from "@/features/finance/components/overview/finance-comparison";
 import { FinanceRefreshNotice } from "@/features/finance/components/finance-refresh-notice";
-import { overviewStats } from "../data/mock-data";
-
-const icons = [HeartPulse, CircleDollarSign];
+import { HealthStats } from "./health-stats";
 
 export function OverviewStats() {
     const { data, ready, loadError, refreshError, refreshing, retry } = useFinance();
@@ -53,16 +51,7 @@ export function OverviewStats() {
                         />
                     </>
                 )}
-                {overviewStats.map((stat, index) => (
-                    <Stat
-                        key={stat.label}
-                        label={stat.label}
-                        value={stat.value}
-                        description={stat.description}
-                        trend={stat.trend}
-                        icon={icons[index]}
-                    />
-                ))}
+                <HealthStats />
             </div>
             {ready && (
                 <FinanceRefreshNotice message={refreshError} refreshing={refreshing} onRetry={retry} />
