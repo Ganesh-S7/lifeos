@@ -1,5 +1,4 @@
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui";
+import { QuickAdd } from "./quick-add";
 
 export function DashboardHeader() {
     return (
@@ -18,10 +17,7 @@ export function DashboardHeader() {
                 </p>
             </div>
 
-            <Button>
-                <Plus className="size-4" />
-                Quick add
-            </Button>
+            <QuickAdd />
         </section>
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Controller,
     useForm,
@@ -118,6 +118,7 @@ export function HealthLogDialog({
     onOpenChange,
     editLog,
 }: HealthLogDialogProps) {
+    const saving = useRef(false);
     const [activeTab, setActiveTab] =
         useState<HealthLogTab>("body");
 
@@ -214,6 +215,8 @@ export function HealthLogDialog({
     }
 
     function handleDialogOpenChange(nextOpen: boolean) {
+        if (saving.current) return;
+
         if (!nextOpen) {
             setActiveTab("body");
         }
@@ -261,49 +264,56 @@ export function HealthLogDialog({
     /* Save                                                                    */
     /* ---------------------------------------------------------------------- */
 
-    const onSubmit = handleSubmit(async (values) => {
-        try {
-            /*
-             * Resolve the record by the submitted date.
-             *
-             * If a record already exists, update that record. Otherwise,
-             * retain the original ID when editing and moving a log to a
-             * different, previously unused date.
-             */
-            const storedLogForDate = useHealthStore
-                .getState()
-                .logs.find((log) => log.date === values.date);
+    const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        await handleSubmit(async (values) => {
+            if (saving.current) return;
+            saving.current = true;
+            try {
+                /*
+                 * Resolve the record by the submitted date.
+                 *
+                 * If a record already exists, update that record. Otherwise,
+                 * retain the original ID when editing and moving a log to a
+                 * different, previously unused date.
+                 */
+                const storedLogForDate = useHealthStore
+                    .getState()
+                    .logs.find((log) => log.date === values.date);
 
-            await healthActions.saveLog({
-                ...values,
-                id: storedLogForDate?.id ?? editLog?.id,
-            });
+                await healthActions.saveLog({
+                    ...values,
+                    id: storedLogForDate?.id ?? editLog?.id,
+                });
 
-            notify.success(
-                storedLogForDate || editLog
-                    ? "Health log updated."
-                    : "Health log saved.",
-            );
-            handleDialogOpenChange(false);
-        } catch (cause) {
-            notify.error("Unable to save your health log.", {
-                description: "Review the form and try again. Your changes have not been saved.",
-            });
-            setError("root.server", {
-                type: "server",
-                message:
-                    cause instanceof Error
-                        ? cause.message
-                        : "Unable to save your health log. Please try again.",
-            });
-        }
-    });
+                notify.success(
+                    storedLogForDate || editLog
+                        ? "Health log updated."
+                        : "Health log saved.",
+                );
+                saving.current = false;
+                handleDialogOpenChange(false);
+            } catch (cause) {
+                notify.error("Unable to save your health log.", {
+                    description: "Review the form and try again. Your changes have not been saved.",
+                });
+                setError("root.server", {
+                    type: "server",
+                    message:
+                        cause instanceof Error
+                            ? cause.message
+                            : "Unable to save your health log. Please try again.",
+                });
+            } finally {
+                saving.current = false;
+            }
+        })(event);
+    };
 
     return (
         <Dialog
             open={open}
             onOpenChange={(nextOpen) => {
-                if (!isSubmitting) handleDialogOpenChange(nextOpen);
+                if (!isSubmitting && !saving.current) handleDialogOpenChange(nextOpen);
             }}
         >
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
