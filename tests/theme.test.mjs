@@ -14,6 +14,7 @@ import {
     getServerTheme,
     getTheme,
     parseTheme,
+    restoreThemePreference,
     setTheme,
     subscribeTheme,
 } from "../src/lib/theme.ts";
@@ -22,10 +23,27 @@ const root = new URL("../src/", import.meta.url);
 const themeUrl = new URL("lib/theme.ts", root).href;
 const toggleUrl = new URL("components/theme/theme-toggle.tsx", root).href;
 const toasterUrl = new URL("components/ui/toaster.tsx", root).href;
+const hookUrl = new URL("components/theme/use-theme.ts", root).href;
+const layoutEffects = { capture: false, callbacks: [] };
+globalThis[Symbol.for("lifeos.theme-layout-tests")] = layoutEffects;
 registerHooks({
     resolve(specifier, context, nextResolve) {
         if (specifier === "react" && context.parentURL?.startsWith("data:")) {
             return nextResolve(specifier, { ...context, parentURL: import.meta.url });
+        }
+        if (context.parentURL === hookUrl && specifier === "react") {
+            // Render with the real external-store hook. Capture only the layout
+            // effect so tests can replay a development remount without a browser.
+            const source = `
+                import { useLayoutEffect as realLayoutEffect } from 'react';
+                export { useSyncExternalStore } from 'react';
+                export function useLayoutEffect(callback, dependencies) {
+                    const boundary = globalThis[Symbol.for('lifeos.theme-layout-tests')];
+                    if (boundary.capture) boundary.callbacks.push({ callback, dependencies });
+                    else realLayoutEffect(callback, dependencies);
+                }
+            `;
+            return { url: `data:text/javascript,${encodeURIComponent(source)}`, shortCircuit: true };
         }
         // Test the real toggle event handler against the real store; React
         // subscription/hydration and browser layout still need browser checks.
@@ -88,6 +106,8 @@ function fakeDocument() {
 }
 
 beforeEach(() => {
+    layoutEffects.capture = false;
+    layoutEffects.callbacks = [];
     storage = new Map();
     storageHandlers = new Set();
     globalThis.document = fakeDocument();
@@ -182,12 +202,94 @@ test("unavailable storage defaults safely but still allows in-page toggling", ()
     assert.equal(getTheme(), "dark");
 });
 
+test("layout initialization repairs a reset dark class and is idempotent across multiple consumers and remounts", () => {
+    storage.set(THEME_STORAGE_KEY, "dark");
+    initialize();
+    layoutEffects.capture = true;
+    function Probe() {
+        return React.createElement("span", null, useTheme().theme);
+    }
+    // Both the global Toaster and a route's toggle may consume this hook.
+    assert.equal(renderToStaticMarkup(React.createElement(Probe)), "<span>light</span>");
+    renderToStaticMarkup(React.createElement(Probe));
+    assert.equal(layoutEffects.callbacks.length, 2);
+    for (const effect of layoutEffects.callbacks) {
+        assert.equal(effect.callback, restoreThemePreference);
+        assert.deepEqual(effect.dependencies, []);
+    }
+
+    let notifications = 0;
+    let writes = 0;
+    window.localStorage.setItem = () => { writes++; };
+    const unsubscribe = subscribeTheme(() => notifications++);
+    try {
+        // Production: the initializer has already applied the correct class.
+        for (const effect of layoutEffects.callbacks) assert.equal(effect.callback(), undefined);
+        assert.equal(getTheme(), "dark");
+        assert.equal(notifications, 0);
+
+        // Development: React resets the root attribute, then replays layout effects.
+        for (let remount = 0; remount < 2; remount++) {
+            document.documentElement.classList.toggle("dark", false);
+            for (const effect of layoutEffects.callbacks) assert.equal(effect.callback(), undefined);
+            assert.equal(getTheme(), "dark");
+            assert.equal(notifications, remount + 1);
+        }
+        assert.equal(writes, 0);
+        assert.equal(storage.get(THEME_STORAGE_KEY), "dark");
+    } finally {
+        unsubscribe();
+    }
+});
+
+test("client restoration preserves the light default and reads the latest persisted toggle choice", () => {
+    for (const saved of [null, "light", "system"]) {
+        storage.clear();
+        if (saved !== null) storage.set(THEME_STORAGE_KEY, saved);
+        document.documentElement.classList.toggle("dark", true);
+        restoreThemePreference();
+        assert.equal(getTheme(), "light");
+        assert.equal(storage.get(THEME_STORAGE_KEY) ?? null, saved);
+    }
+    setTheme("dark");
+    restoreThemePreference();
+    assert.equal(getTheme(), "dark");
+    setTheme("light");
+    restoreThemePreference();
+    assert.equal(getTheme(), "light");
+    assert.equal(storage.get(THEME_STORAGE_KEY), "light");
+});
+
+test("restoration tolerates blocked storage without undoing a working in-page toggle", () => {
+    Object.defineProperty(window, "localStorage", {
+        configurable: true,
+        get() { throw new Error("Storage unavailable"); },
+    });
+    assert.doesNotThrow(restoreThemePreference);
+    assert.equal(getTheme(), "light");
+    setTheme("dark");
+    assert.doesNotThrow(restoreThemePreference);
+    assert.equal(getTheme(), "dark");
+    setTheme("light");
+    assert.doesNotThrow(restoreThemePreference);
+    assert.equal(getTheme(), "light");
+});
+
+test("the root Toaster initializes the shared theme hook on routes without a theme toggle", () => {
+    const layout = readFileSync(new URL("app/layout.tsx", root), "utf8");
+    const toaster = readFileSync(new URL(toasterUrl), "utf8");
+    assert.match(layout, /<Toaster\s*\/>/);
+    assert.match(toaster, /import \{ useTheme \} from "@\/components\/theme\/use-theme"/);
+    assert.match(toaster, /const \{ theme \} = useTheme\(\)/);
+});
+
 test("SSR uses light markup even if a client document already has the saved dark class", () => {
     setTheme("dark");
     function Probe() {
         return React.createElement("span", null, useTheme().theme);
     }
     assert.equal(renderToStaticMarkup(React.createElement(Probe)), "<span>light</span>");
+    assert.equal(getTheme(), "dark", "Server rendering must not run the restoration effect");
     const layout = readFileSync(new URL("app/layout.tsx", root), "utf8");
     assert.match(layout, /<html lang="en" suppressHydrationWarning>/);
     assert.ok(layout.indexOf("THEME_INIT_SCRIPT }}") < layout.indexOf("<body"));

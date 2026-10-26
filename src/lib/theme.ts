@@ -32,6 +32,18 @@ function applyTheme(theme: Theme) {
     listeners.forEach((listener) => listener());
 }
 
+/** Repair root attributes after a remount without creating another theme store. */
+export function restoreThemePreference() {
+    let theme: Theme;
+    try {
+        theme = parseTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
+    } catch {
+        // Keep the current in-page choice when storage is unavailable.
+        return;
+    }
+    if (getTheme() !== theme) applyTheme(theme);
+}
+
 export function setTheme(theme: Theme) {
     try {
         window.localStorage.setItem(THEME_STORAGE_KEY, theme);
