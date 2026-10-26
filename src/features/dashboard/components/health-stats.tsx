@@ -17,7 +17,7 @@ export function HealthStats() {
                 {failed ? (
                     <LoadError message="Unable to load your health data. Please try again." onRetry={retry} />
                 ) : (
-                    <SkeletonRegion label="Loading health statistics" className="grid gap-3 sm:grid-cols-2">
+                    <SkeletonRegion label="Loading health statistics" className="grid gap-3 sm:grid-cols-2 lg:gap-4">
                         {[0, 1].map((index) => (
                             <div key={index} className="space-y-4 rounded-xl border border-border bg-surface p-5">
                                 <Skeleton variant="text" className="w-28" />

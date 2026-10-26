@@ -17,7 +17,7 @@ export function ExpensesHeader({
                     Finance / Expenses
                 </p>
 
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-text-primary">
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-text-primary lg:text-3xl">
                     Expenses
                 </h1>
 

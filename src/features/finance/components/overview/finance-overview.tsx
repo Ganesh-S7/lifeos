@@ -172,16 +172,16 @@ function FinanceOverviewContent() {
     ];
 
     return (
-        <div className="space-y-7">
-            <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="space-y-7 lg:space-y-8">
+            <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center lg:items-end">
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Finance overview</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight text-text-primary lg:text-3xl">Finance overview</h1>
                     <p className="mt-1 text-sm text-text-secondary">Your financial position and this month&apos;s activity.</p>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:justify-end">
                     <Link
                         href="/finance/expenses"
-                        className="rounded-lg group flex gap-1 items-center border border-border bg-surface px-3.5 py-2 text-sm text-text-primary"
+                        className="rounded-lg group flex h-10 gap-1 items-center border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     >
                         Manage expenses
                         <ArrowRight size={12} className="group-hover:translate-x-1 duration-200 ease-in-out" />
@@ -264,7 +264,7 @@ function FinanceOverviewContent() {
                         </div>
                     </section>
                     <section className="space-y-3" aria-labelledby="monthly-title">
-                        <div className="flex justify-between item gap-4">
+                        <div className="flex items-center justify-between gap-4">
                             <div>
                                 <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
                                 <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
@@ -300,9 +300,9 @@ function FinanceOverviewContent() {
                     </section>
                     <FinanceCharts data={chartData} />
                     <CategoryBreakdownChart data={categories} />
-                    <section className="rounded-2xl border border-border bg-surface p-5">
+                    <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-base font-semibold text-text-primary">Recent transactions</h2>
+                            <h2 className="text-sm font-semibold text-text-primary">Recent transactions</h2>
                             <Link href="/finance/expenses" className="text-sm text-primary hover:underline">Expenses</Link>
                         </div>
                         {recent.length === 0 && <p className="mt-4 text-sm text-text-muted">No transactions yet.</p>}

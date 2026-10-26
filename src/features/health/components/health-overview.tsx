@@ -155,11 +155,11 @@ export function HealthOverview() {
     }
 
     return (
-        <div className="space-y-7">
+        <div className="space-y-7 lg:space-y-8">
             {/* Page header */}
-            <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center lg:items-end">
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
+                    <h1 className="text-2xl font-semibold tracking-tight text-text-primary lg:text-3xl">
                         Health overview
                     </h1>
 

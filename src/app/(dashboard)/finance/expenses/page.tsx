@@ -164,7 +164,7 @@ function ExpensesPageContent() {
     }, [expenses, data.accounts, search, category, date, sort]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 lg:space-y-8">
             <ExpensesHeader
                 onAddExpense={() => setAddExpenseOpen(true)}
                 disabled={!ready || data.accounts.length === 0}

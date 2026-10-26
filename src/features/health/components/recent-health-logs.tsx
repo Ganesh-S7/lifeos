@@ -36,19 +36,19 @@ export function RecentHealthLogs({
 }: RecentHealthLogsProps) {
     return (
         <section
-            className="rounded-2xl border border-border bg-surface p-5"
+            className="min-w-0 rounded-xl border border-border bg-surface p-5"
             aria-labelledby="health-recent-logs-title"
         >
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                 <div>
                     <h2
                         id="health-recent-logs-title"
-                        className="text-base font-semibold text-text-primary"
+                        className="text-sm font-semibold text-text-primary"
                     >
                         Recent health logs
                     </h2>
 
-                    <p className="mt-1 text-sm text-text-secondary">
+                    <p className="mt-1 text-xs text-text-secondary">
                         Review and manage your recent measurements.
                     </p>
                 </div>

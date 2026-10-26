@@ -15,13 +15,13 @@ export function OverviewStats() {
 
     return (
         <section className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:gap-4 xl:grid-cols-4">
                 {!ready ? (
                     <div className="sm:col-span-2">
                         {loadError ? <LoadError message={loadError} onRetry={retry} /> : (
                             <SkeletonRegion
                                 label="Loading financial statistics"
-                                className="grid gap-3 sm:grid-cols-2"
+                                className="grid gap-3 sm:grid-cols-2 lg:gap-4"
                             >
                                 {[0, 1].map((index) => (
                                     <div key={index} className="space-y-4 rounded-xl border border-border p-5">

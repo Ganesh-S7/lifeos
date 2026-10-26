@@ -21,13 +21,13 @@ export function CategoryBreakdownChart({
     data,
 }: CategoryBreakdownChartProps) {
     return (
-        <section className="rounded-2xl h-full border border-border bg-surface p-5">
+        <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
             <div className="mb-5">
-                <h2 className="text-base font-semibold text-text-primary">
+                <h2 className="text-sm font-semibold text-text-primary">
                     Spending by category
                 </h2>
 
-                <p className="mt-1 text-sm text-text-secondary">
+                <p className="mt-1 text-xs text-text-secondary">
                     Where your money goes this month
                 </p>
             </div>
@@ -43,7 +43,7 @@ export function CategoryBreakdownChart({
                     className="w-full"
                     style={{ height: Math.max(260, data.length * 42) }}
                 >
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                         <BarChart
                             data={data}
                             layout="vertical"

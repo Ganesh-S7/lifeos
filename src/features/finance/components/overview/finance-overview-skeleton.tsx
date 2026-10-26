@@ -8,7 +8,7 @@ import {
 
 export function FinanceOverviewSkeleton() {
     return (
-        <SkeletonRegion label="Loading your finance data" className="space-y-7">
+        <SkeletonRegion label="Loading your finance data" className="space-y-7 lg:space-y-8">
             <section className="space-y-3">
                 <div>
                     <h2 className="text-base font-semibold text-text-primary">Overall financial snapshot</h2>
@@ -25,15 +25,15 @@ export function FinanceOverviewSkeleton() {
             </section>
             <div className="grid gap-4 xl:grid-cols-2">
                 {["Net worth trend", "Cash flow"].map((title) => (
-                    <section key={title} className="rounded-2xl border border-border bg-surface p-5">
-                        <h2 className="text-base font-semibold text-text-primary">{title}</h2>
+                    <section key={title} className="min-w-0 rounded-xl border border-border bg-surface p-5">
+                        <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
                         <Skeleton variant="text" className="mt-2 w-48" />
-                        <ChartSkeleton className="mt-5" />
+                        <ChartSkeleton className="mt-5 lg:h-72" />
                     </section>
                 ))}
             </div>
-            <section className="rounded-2xl border border-border bg-surface p-5">
-                <h2 className="text-base font-semibold text-text-primary">Spending by category</h2>
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+                <h2 className="text-sm font-semibold text-text-primary">Spending by category</h2>
                 <div className="mt-5 space-y-5">
                     {[80, 60, 45, 30].map((width) => (
                         <div key={width} className="flex items-center gap-4">
@@ -45,8 +45,8 @@ export function FinanceOverviewSkeleton() {
                     ))}
                 </div>
             </section>
-            <section className="rounded-2xl border border-border bg-surface p-5">
-                <h2 className="text-base font-semibold text-text-primary">Recent transactions</h2>
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+                <h2 className="text-sm font-semibold text-text-primary">Recent transactions</h2>
                 <div className="mt-3"><ListSkeleton /></div>
             </section>
         </SkeletonRegion>

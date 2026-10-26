@@ -129,7 +129,7 @@ export function HealthProgress({
 
     return (
         <section
-            className="rounded-2xl border border-border bg-surface p-5"
+            className="min-w-0 rounded-xl border border-border bg-surface p-5"
             aria-labelledby="health-progress-title"
         >
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -137,7 +137,7 @@ export function HealthProgress({
                 <div>
                     <h2
                         id="health-progress-title"
-                        className="text-base font-semibold text-text-primary"
+                        className="text-sm font-semibold text-text-primary"
                     >
                         {isToday ? "Today's progress" : "Daily progress"}
                     </h2>

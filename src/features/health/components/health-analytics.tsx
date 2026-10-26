@@ -314,7 +314,7 @@ export function HealthAnalytics({
 
     return (
         <section
-            className="rounded-2xl border border-border bg-surface p-5"
+            className="min-w-0 rounded-xl border border-border bg-surface p-5"
             aria-labelledby="health-analytics-title"
         >
             {/* Header and trend range */}
@@ -322,12 +322,12 @@ export function HealthAnalytics({
                 <div>
                     <h2
                         id="health-analytics-title"
-                        className="text-base font-semibold text-text-primary"
+                        className="text-sm font-semibold text-text-primary"
                     >
                         Health analytics
                     </h2>
 
-                    <p className="mt-1 text-sm text-text-secondary">
+                    <p className="mt-1 text-xs text-text-secondary">
                         Explore your daily measurements over{" "}
                         {rangeDescription}.
                     </p>
@@ -404,7 +404,7 @@ export function HealthAnalytics({
                 )}
 
                 {hasAnyData ? (
-                    <div className="mt-4 h-72 w-full">
+                    <div className="mt-4 h-72 w-full min-w-0">
                         <ResponsiveContainer
                             width="100%"
                             height="100%"

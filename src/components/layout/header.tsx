@@ -64,7 +64,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-border-subtle bg-background">
-      <div className="flex h-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-full w-full max-w-376 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Left */}
         <div className="flex min-w-0 items-center gap-3">
           <IconButton

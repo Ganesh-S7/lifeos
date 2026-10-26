@@ -83,7 +83,7 @@ export function IncomeExpensesChart() {
                     <LoadError message="Unable to load your financial activity. Please try again." onRetry={retry} />
                 ) : (
                     <SkeletonRegion label="Loading monthly income and expenses">
-                        <ChartSkeleton />
+                        <ChartSkeleton className="lg:h-72" />
                     </SkeletonRegion>
                 )
             ) : (
@@ -94,7 +94,7 @@ export function IncomeExpensesChart() {
                         onRetry={retry}
                     />
                     {!hasActivity ? (
-                        <div className="flex min-h-64 flex-col justify-center gap-2 text-center">
+                        <div className="flex min-h-64 lg:min-h-72 flex-col justify-center gap-2 text-center">
                             <p className="text-sm font-medium text-text-primary">No income or expenses in this period</p>
                             <p className="text-sm text-text-secondary">
                                 Record income or an expense in Finance to see your monthly totals here.
@@ -102,7 +102,7 @@ export function IncomeExpensesChart() {
                         </div>
                     ) : (
                         <>
-                            <div className="h-64 w-full min-w-0">
+                            <div className="h-64 w-full min-w-0 lg:h-72">
                                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                     <BarChart
                                         data={points}
@@ -198,11 +198,11 @@ export function WeightTrendChart() {
                     <LoadError message="Unable to load your weight measurements. Please try again." onRetry={retry} />
                 ) : (
                     <SkeletonRegion label="Loading weight measurements">
-                        <ChartSkeleton />
+                        <ChartSkeleton className="lg:h-72" />
                     </SkeletonRegion>
                 )
             ) : measurements.length < 2 ? (
-                <div className="flex min-h-64 flex-col justify-center gap-2 text-center">
+                <div className="flex min-h-64 lg:min-h-72 flex-col justify-center gap-2 text-center">
                     <p className="text-sm font-medium text-text-primary">
                         {measurements.length === 0 ? "No weight measurements in this period" : "One weight measurement recorded"}
                     </p>
@@ -212,7 +212,7 @@ export function WeightTrendChart() {
                 </div>
             ) : (
                 <>
-                    <div className="h-64 w-full min-w-0">
+                    <div className="h-64 w-full min-w-0 lg:h-72">
                         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <LineChart
                                 data={measurements}

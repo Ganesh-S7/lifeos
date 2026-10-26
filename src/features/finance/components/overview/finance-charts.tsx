@@ -21,13 +21,13 @@ export function FinanceCharts({ data }: { data: FinanceChartPoint[] }) {
     const hasCashFlow = data.some((point) => point.income > 0 || point.expenses > 0);
     const axis = { fill: "var(--text-muted)", fontSize: 11 };
     return (
-        <div className="grid gap-4 xl:grid-cols-2">
-            <section className="rounded-2xl border border-border bg-surface p-5">
-                <h2 className="text-base font-semibold text-text-primary">Net worth trend</h2>
-                <p className="mt-1 text-sm text-text-secondary">Your financial position over six months</p>
-                <div className="mt-5 h-64">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+                <h2 className="text-sm font-semibold text-text-primary">Net worth trend</h2>
+                <p className="mt-1 text-xs text-text-secondary">Your financial position over six months</p>
+                <div className="mt-5 h-64 w-full min-w-0 lg:h-72">
                     {hasPosition ? (
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <AreaChart data={data} margin={{ left: -14, right: 8 }}>
                                 <defs>
                                     <linearGradient id="worth" x1="0" y1="0" x2="0" y2="1">
@@ -75,12 +75,12 @@ export function FinanceCharts({ data }: { data: FinanceChartPoint[] }) {
                     Recorded monthly positions only; gaps indicate unavailable history. The latest point uses current records.
                 </p>
             </section>
-            <section className="rounded-2xl border border-border bg-surface p-5">
-                <h2 className="text-base font-semibold text-text-primary">Cash flow</h2>
-                <p className="mt-1 text-sm text-text-secondary">Monthly income and ordinary expenses</p>
-                <div className="mt-5 h-64">
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+                <h2 className="text-sm font-semibold text-text-primary">Cash flow</h2>
+                <p className="mt-1 text-xs text-text-secondary">Monthly income and ordinary expenses</p>
+                <div className="mt-5 h-64 w-full min-w-0 lg:h-72">
                     {hasCashFlow ? (
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <BarChart data={data} margin={{ left: -14, right: 8 }}>
                                 <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 4" />
                                 <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />

@@ -8,7 +8,7 @@ import { OverviewAnalysis } from "@/features/dashboard/components/overview-analy
 
 export default function DashboardPage() {
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 lg:space-y-8">
             <DashboardHeader />
 
             <OverviewStats />
