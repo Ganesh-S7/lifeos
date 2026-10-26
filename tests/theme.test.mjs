@@ -194,6 +194,19 @@ test("SSR uses light markup even if a client document already has the saved dark
     assert.doesNotMatch(layout, /className="dark"/);
 });
 
+test("root layout registers the unchanged inline initializer with Next Script before hydration", () => {
+    const layout = readFileSync(new URL("app/layout.tsx", root), "utf8");
+    assert.match(layout, /import Script from "next\/script"/);
+    const head = layout.match(/<head>([\s\S]*?)<\/head>/)?.[1];
+    assert.ok(head, "Initializer stays in the root layout head");
+    const scripts = [...head.matchAll(/<Script\b([\s\S]*?)\/>/g)];
+    assert.equal(scripts.length, 1);
+    assert.match(scripts[0][1], /id="lifeos-theme"/);
+    assert.match(scripts[0][1], /strategy="beforeInteractive"/);
+    assert.match(scripts[0][1], /dangerouslySetInnerHTML=\{\{ __html: THEME_INIT_SCRIPT \}\}/);
+    assert.doesNotMatch(layout, /<script\b/);
+});
+
 test("current light and dark palettes match the intended colors and use theme-aware native controls", () => {
     const css = readFileSync(new URL("app/globals.css", root), "utf8");
     const light = css.match(/:root\s*\{([\s\S]*?)\n\}/)[1];
