@@ -314,7 +314,7 @@ export function HealthAnalytics({
 
     return (
         <section
-            className="min-w-0 rounded-xl border border-border bg-surface p-5"
+            className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5"
             aria-labelledby="health-analytics-title"
         >
             {/* Header and trend range */}
@@ -372,7 +372,7 @@ export function HealthAnalytics({
                             onClick={() =>
                                 setSelectedMetricKey(metric.key)
                             }
-                            className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${isActive
+                            className={`min-h-11 sm:min-h-0 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${isActive
                                     ? "border-primary bg-surface-elevated text-text-primary"
                                     : "border-border text-text-secondary hover:bg-surface-hover hover:text-text-primary"
                                 }`}
@@ -404,10 +404,11 @@ export function HealthAnalytics({
                 )}
 
                 {hasAnyData ? (
-                    <div className="mt-4 h-72 w-full min-w-0">
+                    <div className="mt-4 h-64 sm:h-72 w-full min-w-0">
                         <ResponsiveContainer
                             width="100%"
                             height="100%"
+                            minWidth={0}
                         >
                             <AreaChart
                                 data={chartData}

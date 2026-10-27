@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut, Menu } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Breadcrumbs } from "./breadcrumbs";
 import { IconButton, Skeleton } from "@/components/ui";
@@ -8,11 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface HeaderProps {
-  onMenuClick: () => void;
-}
-
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header() {
   const router = useRouter();
 
   const { data: session, isPending } = authClient.useSession();
@@ -67,13 +64,14 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="mx-auto flex h-full w-full max-w-376 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Left */}
         <div className="flex min-w-0 items-center gap-3">
-          <IconButton
-            className="lg:hidden"
-            onClick={onMenuClick}
-            aria-label="Open navigation"
-          >
-            <Menu className="size-4.5" />
-          </IconButton>
+          <Dialog.Trigger asChild>
+            <IconButton
+              className="lg:hidden"
+              aria-label="Open navigation"
+            >
+              <Menu className="size-4.5" />
+            </IconButton>
+          </Dialog.Trigger>
 
           <Breadcrumbs />
         </div>
@@ -118,7 +116,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             disabled={isSigningOut || isPending || !session}
             aria-label="Sign out"
             title="Sign out"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 sm:size-9"
           >
             {isSigningOut ? (
               <span

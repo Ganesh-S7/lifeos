@@ -64,13 +64,13 @@ export function ExpensesToolbar({
                 />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2 sm:flex sm:flex-wrap sm:items-center">
                 <DatePicker
                     value={date}
                     onChange={onDateChange}
                     placeholder="Date"
-                    className="w-37.5"
-                    triggerClassName="h-8 text-xs"
+                    className="w-full sm:w-37.5"
+                    triggerClassName="h-11 sm:h-8 sm:text-xs"
                 />
 
                 <Select
@@ -84,8 +84,8 @@ export function ExpensesToolbar({
                     ]}
                     onChange={(value) => onCategoryChange(value ?? "")}
                     placeholder="Category"
-                    className="w-37.5"
-                    triggerClassName="h-8 min-w-[140px]"
+                    className="w-full sm:w-37.5"
+                    triggerClassName="h-11 sm:h-8 sm:min-w-[140px]"
                 />
 
                 <Select<ExpenseSort>
@@ -96,9 +96,9 @@ export function ExpensesToolbar({
                             onSortChange(value);
                         }
                     }}
-                    className="w-37.5"
+                    className="w-full sm:w-37.5"
                     contentClassName="!w-40"
-                    triggerClassName="h-8 min-w-[150px] text-xs"
+                    triggerClassName="h-11 sm:h-8 sm:min-w-[150px] sm:text-xs"
                 />
 
                 {hasActiveFilters && (

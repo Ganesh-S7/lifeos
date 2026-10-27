@@ -14,10 +14,10 @@ export function Breadcrumbs() {
     return (
         <nav
             aria-label="Breadcrumb"
-            className="hidden min-w-0 items-center gap-2 text-xs text-text-muted sm:flex"
+            className="flex min-w-0 items-center gap-2 text-xs text-text-muted sm:flex"
         >
-            <span aria-hidden="true">LifeOS</span>
-            <span aria-hidden="true">/</span>
+            <span aria-hidden="true" className="hidden sm:inline">LifeOS</span>
+            <span aria-hidden="true" className="hidden sm:inline">/</span>
             <ol className="flex min-w-0 items-center gap-2">
                 {items.map((item, index) => (
                     <li key={item.href} className="flex min-w-0 items-center gap-2">

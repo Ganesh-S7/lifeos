@@ -87,7 +87,7 @@ const Select = <T extends SelectValue>({
     return (
         <div
             className={cn(
-                "flex flex-col gap-1.5",
+                "flex min-w-0 flex-col gap-1.5",
                 label || error ? "w-full" : "w-auto",
                 className,
             )}
@@ -120,9 +120,9 @@ const Select = <T extends SelectValue>({
                     aria-invalid={error ? true : undefined}
                     aria-describedby={describedBy}
                     className={cn(
-                        "flex h-10 w-full items-center justify-between gap-2",
-                        "rounded-md border bg-surface px-3",
-                        "text-sm text-text-primary",
+                        "flex h-11 sm:h-10 min-w-0 w-full items-center justify-between gap-2",
+                        "rounded-md border bg-surface px-3 [&>span:first-child]:min-w-0 [&>span:first-child]:truncate",
+                        "text-base sm:text-sm text-text-primary",
                         "outline-none transition-colors",
                         "data-placeholder:text-text-muted",
                         "focus:ring-2 focus:ring-primary/15",
@@ -168,7 +168,7 @@ const Select = <T extends SelectValue>({
                                         value={serializedValue}
                                         disabled={option.disabled}
                                         className={cn(
-                                            "relative flex h-9 w-full cursor-pointer",
+                                            "relative flex min-h-11 sm:min-h-9 w-full cursor-pointer",
                                             "select-none items-center rounded-md",
                                             "px-3 pr-9 text-sm outline-none",
                                             "text-text-primary",

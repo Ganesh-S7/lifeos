@@ -100,7 +100,7 @@ export function ExpensesTable({
             </div>
 
             {/* Desktop */}
-            <div className="hidden overflow-x-auto md:block">
+            <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full text-left">
                     <thead>
                         <tr className="border-b border-border-subtle bg-surface-subtle">
@@ -187,7 +187,7 @@ export function ExpensesTable({
             </div>
 
             {/* Mobile */}
-            <div className="divide-y divide-border-subtle md:hidden">
+            <div className="divide-y divide-border-subtle lg:hidden">
                 {expenses.map((expense) => {
                     const variant =
                         categoryVariants[
@@ -197,29 +197,33 @@ export function ExpensesTable({
                     return (
                         <div
                             key={expense.id}
-                            className="flex items-center gap-3 px-5 py-4"
+                            className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 px-4 py-4 sm:px-5"
                         >
-                            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-elevated text-xs font-semibold text-text-secondary">
-                                {expense.merchant.charAt(0)}
-                            </div>
-
                             <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-medium text-text-primary">
+                                <p className="break-words text-sm font-medium text-text-primary">
                                     {expense.merchant}
                                 </p>
 
-                                <div className="mt-1 flex items-center gap-2">
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
                                     <Badge variant={variant}>
                                         {expense.category}
                                     </Badge>
 
-                                    <span className="text-[10px] text-text-muted">
+                                    <span className="text-xs text-text-muted">
                                         {formatDateDisplay(expense.date)}
                                     </span>
                                 </div>
+                                <p className="mt-1 break-words text-xs text-text-secondary">
+                                    {expense.account}
+                                </p>
+                                {expense.note && (
+                                    <p className="mt-1 break-words text-xs text-text-muted">
+                                        {expense.note}
+                                    </p>
+                                )}
                             </div>
 
-                            <p className="text-xs font-semibold text-text-primary">
+                            <p className="col-start-1 row-start-2 break-words text-sm font-semibold tabular-nums text-text-primary">
                                 -{formatCurrency(expense.amount)}
                             </p>
                             <ExpenseActions

@@ -155,7 +155,7 @@ export function HealthOverview() {
     }
 
     return (
-        <div className="space-y-7 lg:space-y-8">
+        <div className="space-y-5 sm:space-y-7 lg:space-y-8">
             {/* Page header */}
             <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center lg:items-end">
                 <div>
@@ -174,7 +174,7 @@ export function HealthOverview() {
                         type="button"
                         onClick={() => setTargetsDialogOpen(true)}
                         disabled={initialLoading}
-                        className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+                        className="min-h-11 sm:min-h-0 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Manage targets
                     </button>

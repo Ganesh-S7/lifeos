@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import * as Dialog from "@radix-ui/react-dialog";
 
 import {
     isNavigationActive,
@@ -76,7 +77,11 @@ registerHooks({
 const { Breadcrumbs } = await import("../src/components/layout/breadcrumbs.tsx");
 const { Sidebar } = await import("../src/components/layout/sidebar.tsx");
 const { AppShell } = await import("../src/components/layout/app-shell.tsx");
-const render = (Component, props) => renderToStaticMarkup(React.createElement(Component, props));
+const render = (Component, props) => renderToStaticMarkup(
+    Component === Sidebar
+        ? React.createElement(Dialog.Root, { open: props.open }, React.createElement(Component, props))
+        : React.createElement(Component, props),
+);
 
 test("breadcrumbs resolve implemented routes with meaningful labels and no duplicate parents", () => {
     for (const [path, expected] of [
@@ -154,4 +159,42 @@ test("sidebar uses consistent workspace surfaces and scoped navigation colors on
         const shell = render(AppShell, { children: "Page content" });
         assert.match(shell, /<header[^>]*border-border-subtle bg-background/);
     }
+});
+
+test("mobile navigation uses a modal drawer with a trigger, accessible title and explicit close", () => {
+    const sidebar = readFileSync(new URL("components/layout/sidebar.tsx", root), "utf8");
+    const header = readFileSync(new URL("components/layout/header.tsx", root), "utf8");
+    const shell = readFileSync(new URL("components/layout/app-shell.tsx", root), "utf8");
+    // Radix owns focus trapping, Escape dismissal, outside dismissal and focus return.
+    assert.match(shell, /<Dialog.Root open=\{sidebarOpen\} onOpenChange=\{setSidebarOpen\}/);
+    assert.match(header, /<Dialog.Trigger asChild>/);
+    assert.doesNotMatch(header, /onMenuClick/);
+    for (const primitive of ["Portal", "Overlay", "Content", "Title", "Close"]) {
+        assert.ok(sidebar.includes(`<Dialog.${primitive}`), primitive);
+    }
+    assert.match(sidebar, /aria-label="Close navigation"/);
+    assert.match(sidebar, /LifeOS navigation/);
+    assert.match(sidebar, /desktop.addEventListener\("change", closeOnDesktop\)/);
+    assert.match(sidebar, /desktop.removeEventListener\("change", closeOnDesktop\)/);
+    assert.match(sidebar, /group flex h-11 lg:h-9/);
+    assert.doesNotMatch(sidebar, /-translate-x-full/);
+});
+
+test("mobile expenses keep readable records and actions rather than compressing the desktop table", () => {
+    const source = readFileSync(new URL("features/finance/components/expenses/expenses-table.tsx", root), "utf8");
+    assert.match(source, /hidden overflow-x-auto lg:block/);
+    assert.match(source, /divide-y divide-border-subtle lg:hidden/);
+    assert.match(source, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
+    assert.match(source, /break-words text-sm font-medium/);
+    assert.match(source, /col-start-1 row-start-2 break-words/);
+    assert.match(source, /<ExpenseActions/);
+});
+
+test("shared dialogs fit the dynamic viewport and mobile fields retain comfortable touch targets", () => {
+    const dialog = readFileSync(new URL("components/ui/dialog/dialog.tsx", root), "utf8");
+    const input = readFileSync(new URL("components/ui/input.tsx", root), "utf8");
+    assert.ok(dialog.includes("max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain"));
+    assert.match(dialog, /aria-label="Close dialog"/);
+    assert.match(input, /h-11 sm:h-10/);
+    assert.match(input, /text-base sm:text-sm/);
 });

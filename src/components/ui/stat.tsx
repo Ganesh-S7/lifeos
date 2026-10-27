@@ -54,7 +54,7 @@ export function Stat({
         : null;
 
   return (
-    <Card className={cn("flex flex-col p-5", className)}>
+    <Card className={cn("min-w-0 flex flex-col p-4 sm:p-5", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">

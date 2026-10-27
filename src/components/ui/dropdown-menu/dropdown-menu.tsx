@@ -64,7 +64,7 @@ export const DropdownMenuItem = forwardRef<
         ref={ref}
         className={cn(
             "relative flex cursor-pointer select-none items-center",
-            "gap-2 rounded-md px-2.5 py-2 text-xs outline-none",
+            "min-h-11 sm:min-h-0 gap-2 rounded-md px-2.5 py-2 text-sm sm:text-xs outline-none",
             "transition-colors",
             "data-highlighted:bg-surface-elevated",
             "data-disabled:pointer-events-none",

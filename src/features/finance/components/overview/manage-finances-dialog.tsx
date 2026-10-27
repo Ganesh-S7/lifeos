@@ -193,9 +193,9 @@ export function ManageFinancesDialog({
                                 const kind = "type" in item ? item.type : "Bank account";
 
                                 return (
-                                    <div key={item.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5">
+                                    <div key={item.id} className="flex flex-col items-stretch gap-2 px-4 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium text-text-primary">
+                                            <p className="break-words text-sm font-medium text-text-primary sm:truncate">
                                                 {item.name}
                                             </p>
                                             <p className="mt-0.5 text-xs text-text-muted">{kind}</p>
@@ -206,7 +206,7 @@ export function ManageFinancesDialog({
                                         <div className="flex items-center gap-3 text-xs">
                                             <button
                                                 type="button"
-                                                className="font-medium text-primary hover:underline"
+                                                className="min-h-11 px-2 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:min-h-0 sm:px-0"
                                                 onClick={() => onEdit(activeTab, item.id)}
                                                 aria-label={`Edit ${item.name}`}
                                             >
@@ -215,7 +215,7 @@ export function ManageFinancesDialog({
                                             {!hasTransactions && (
                                                 <button
                                                     type="button"
-                                                    className="font-medium text-danger hover:underline"
+                                                    className="min-h-11 px-2 font-medium text-danger hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:min-h-0 sm:px-0"
                                                     onClick={() => onDelete(activeTab, item.id, item.name)}
                                                     aria-label={`Delete ${item.name}`}
                                                 >

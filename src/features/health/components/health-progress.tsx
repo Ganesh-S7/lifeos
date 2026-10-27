@@ -129,7 +129,7 @@ export function HealthProgress({
 
     return (
         <section
-            className="min-w-0 rounded-xl border border-border bg-surface p-5"
+            className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5"
             aria-labelledby="health-progress-title"
         >
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -147,7 +147,7 @@ export function HealthProgress({
                             type="button"
                             aria-label="View previous day"
                             onClick={() => navigateDay(-1)}
-                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                            className="inline-flex size-11 sm:size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                         >
                             <ChevronLeft
                                 className="size-4"
@@ -167,7 +167,7 @@ export function HealthProgress({
                             aria-label="View next day"
                             onClick={() => navigateDay(1)}
                             disabled={isToday || isFutureDate}
-                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                            className="inline-flex size-11 sm:size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <ChevronRight
                                 className="size-4"

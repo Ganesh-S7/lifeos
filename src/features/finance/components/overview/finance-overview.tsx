@@ -172,7 +172,7 @@ function FinanceOverviewContent() {
     ];
 
     return (
-        <div className="space-y-7 lg:space-y-8">
+        <div className="space-y-5 sm:space-y-7 lg:space-y-8">
             <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center lg:items-end">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-text-primary lg:text-3xl">Finance overview</h1>
@@ -199,7 +199,7 @@ function FinanceOverviewContent() {
                         onRetry={retry}
                     />
                     <section className="space-y-3" aria-labelledby="snapshot-title">
-                        <div className="flex justify-between items-center gap-4">
+                        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <div>
                                 <h2 id="snapshot-title" className="text-base font-semibold text-text-primary">Overall financial snapshot</h2>
                                 <p className="text-xs text-text-secondary">Current balances, valuations and debt</p>
@@ -217,7 +217,7 @@ function FinanceOverviewContent() {
                                 <Stat
                                     key={group.kind}
                                     icon={group.icon}
-                                    className="min-h-48"
+                                    className="sm:min-h-48"
                                     label={group.label}
                                     value={formatCurrency(group.value)}
                                     description={group.description}
@@ -231,7 +231,7 @@ function FinanceOverviewContent() {
                                     action={
                                         <button
                                             type="button"
-                                            className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
+                                            className="min-h-11 sm:min-h-0 text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
                                             onClick={() => openManage(group.kind)}
                                         >
                                             {group.action} <ArrowRight size={10} className="group-hover:translate-x-0.5 duration-200 ease-in-out" />
@@ -241,7 +241,7 @@ function FinanceOverviewContent() {
                             ))}
                             <Stat
                                 icon={Scale}
-                                className="min-h-48"
+                                className="sm:min-h-48"
                                 label="Net worth"
                                 value={formatCurrency(snapshot.netWorth)}
                                 description="Bank balance + investments − debt"
@@ -254,7 +254,7 @@ function FinanceOverviewContent() {
                                 action={
                                     <button
                                         type="button"
-                                        className="text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
+                                        className="min-h-11 sm:min-h-0 text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
                                         onClick={() => setBreakdownOpen(true)}
                                     >
                                         View breakdown <ArrowRight size={10} className="group-hover:translate-x-1 duration-200 ease-in-out" />
@@ -264,7 +264,7 @@ function FinanceOverviewContent() {
                         </div>
                     </section>
                     <section className="space-y-3" aria-labelledby="monthly-title">
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <div>
                                 <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
                                 <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
@@ -300,7 +300,7 @@ function FinanceOverviewContent() {
                     </section>
                     <FinanceCharts data={chartData} />
                     <CategoryBreakdownChart data={categories} />
-                    <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+                    <section className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-semibold text-text-primary">Recent transactions</h2>
                             <Link href="/finance/expenses" className="text-sm text-primary hover:underline">Expenses</Link>
@@ -308,17 +308,17 @@ function FinanceOverviewContent() {
                         {recent.length === 0 && <p className="mt-4 text-sm text-text-muted">No transactions yet.</p>}
                         <div className="mt-3 divide-y divide-border-subtle">
                             {recent.map((item) => (
-                                <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                                    <div>
+                                <div key={item.id} className="flex min-w-0 flex-col items-start gap-2 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                                    <div className="min-w-0 max-w-full break-words">
                                         <p className="text-sm font-medium text-text-primary">{item.description}</p>
                                         <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")} · {formatDateDisplay(item.date)}</p>
                                     </div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex max-w-full flex-wrap items-center gap-3">
                                         <span className="text-sm font-semibold text-text-primary">
                                             {item.type === "income" || item.type === "investment_sale" ? "+" : item.type === "transfer" ? "↔ " : "−"}{formatCurrency(item.amount)}
                                         </span>
-                                        {item.type !== "expense" && <button className="text-xs text-primary" onClick={() => open("transaction", item.id)}>Edit</button>}
-                                        {item.type !== "expense" && <button className="text-xs text-danger" onClick={() => setTarget({ kind: "transaction", id: item.id, name: item.description })}>Delete</button>}
+                                        {item.type !== "expense" && <button className="min-h-11 px-2 text-xs text-primary sm:min-h-0 sm:px-0" onClick={() => open("transaction", item.id)}>Edit</button>}
+                                        {item.type !== "expense" && <button className="min-h-11 px-2 text-xs text-danger sm:min-h-0 sm:px-0" onClick={() => setTarget({ kind: "transaction", id: item.id, name: item.description })}>Delete</button>}
                                     </div>
                                 </div>
                             ))}

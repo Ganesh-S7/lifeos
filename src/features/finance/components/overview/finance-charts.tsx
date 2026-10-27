@@ -22,7 +22,7 @@ export function FinanceCharts({ data }: { data: FinanceChartPoint[] }) {
     const axis = { fill: "var(--text-muted)", fontSize: 11 };
     return (
         <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
                 <h2 className="text-sm font-semibold text-text-primary">Net worth trend</h2>
                 <p className="mt-1 text-xs text-text-secondary">Your financial position over six months</p>
                 <div className="mt-5 h-64 w-full min-w-0 lg:h-72">
@@ -75,7 +75,7 @@ export function FinanceCharts({ data }: { data: FinanceChartPoint[] }) {
                     Recorded monthly positions only; gaps indicate unavailable history. The latest point uses current records.
                 </p>
             </section>
-            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
                 <h2 className="text-sm font-semibold text-text-primary">Cash flow</h2>
                 <p className="mt-1 text-xs text-text-secondary">Monthly income and ordinary expenses</p>
                 <div className="mt-5 h-64 w-full min-w-0 lg:h-72">

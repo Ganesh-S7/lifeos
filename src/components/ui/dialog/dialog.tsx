@@ -49,7 +49,7 @@ export const DialogContent = forwardRef<
                     "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
                     "max-w-lg -translate-x-1/2 -translate-y-1/2",
                     "rounded-xl border border-border bg-surface",
-                    "p-5 text-text-primary shadow-lg",
+                    "max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain p-5 text-text-primary shadow-lg",
                     "outline-none",
                     "transition-[opacity,transform] duration-200",
                     "data-[state=closed]:opacity-0 data-[state=open]:opacity-100",
@@ -62,7 +62,7 @@ export const DialogContent = forwardRef<
 
                 <DialogPrimitive.Close
                     className={cn(
-                        "absolute right-4 top-4 rounded-md p-1.5",
+                        "absolute right-2 top-2 flex size-11 items-center justify-center rounded-md sm:right-4 sm:top-4 sm:size-7 sm:p-1.5",
                         "text-text-muted transition-colors",
                         "hover:bg-surface-hover hover:text-text-primary",
                         "focus-visible:outline-none focus-visible:ring-2",
@@ -85,7 +85,7 @@ export function DialogHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
     return (
         <div
-            className={cn("flex flex-col gap-1.5", className)}
+            className={cn("flex flex-col gap-1.5 pr-8 sm:pr-0", className)}
             {...props}
         />
     );

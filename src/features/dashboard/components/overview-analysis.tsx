@@ -51,13 +51,13 @@ function AnalysisCard({
     const titleId = useId();
 
     return (
-        <Card role="region" aria-labelledby={titleId} className="min-w-0 overflow-hidden p-5">
+        <Card role="region" aria-labelledby={titleId} className="min-w-0 overflow-hidden p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h2 id={titleId} className="text-sm font-semibold text-text-primary">{title}</h2>
                     <p className="mt-1 text-xs text-text-secondary">{description}</p>
                 </div>
-                <Link href={href} className="text-xs font-medium text-primary hover:underline">
+                <Link href={href} className="inline-flex min-h-11 items-center text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:min-h-0">
                     {linkLabel}
                 </Link>
             </div>

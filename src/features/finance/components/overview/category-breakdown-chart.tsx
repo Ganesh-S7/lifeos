@@ -21,7 +21,7 @@ export function CategoryBreakdownChart({
     data,
 }: CategoryBreakdownChartProps) {
     return (
-        <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+        <section className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
             <div className="mb-5">
                 <h2 className="text-sm font-semibold text-text-primary">
                     Spending by category

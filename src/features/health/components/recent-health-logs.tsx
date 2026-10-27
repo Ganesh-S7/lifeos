@@ -36,7 +36,7 @@ export function RecentHealthLogs({
 }: RecentHealthLogsProps) {
     return (
         <section
-            className="min-w-0 rounded-xl border border-border bg-surface p-5"
+            className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5"
             aria-labelledby="health-recent-logs-title"
         >
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -134,7 +134,7 @@ export function RecentHealthLogs({
                                         type="button"
                                         onClick={() => onEdit(log)}
                                         aria-label={`Edit health log for ${formatDateDisplay(log.date)}`}
-                                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-hover"
+                                        className="inline-flex items-center gap-1.5 rounded-md min-h-11 px-3 py-2 sm:min-h-0 sm:px-2 sm:py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-hover"
                                     >
                                         <Settings2
                                             className="size-3.5"
@@ -147,7 +147,7 @@ export function RecentHealthLogs({
                                         type="button"
                                         onClick={() => onDelete(log)}
                                         aria-label={`Delete health log for ${formatDateDisplay(log.date)}`}
-                                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-danger transition-colors hover:bg-danger-subtle"
+                                        className="inline-flex items-center gap-1.5 rounded-md min-h-11 px-3 py-2 sm:min-h-0 sm:px-2 sm:py-1 text-xs font-medium text-danger transition-colors hover:bg-danger-subtle"
                                     >
                                         <Trash2
                                             className="size-3.5"

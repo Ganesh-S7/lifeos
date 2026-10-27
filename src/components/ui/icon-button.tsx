@@ -9,9 +9,9 @@ interface IconButtonProps
 }
 
 const sizeClasses: Record<IconButtonSize, string> = {
-  sm: "size-8",
-  md: "size-9",
-  lg: "size-10",
+  sm: "size-11 sm:size-8",
+  md: "size-11 sm:size-9",
+  lg: "size-11 sm:size-10",
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
