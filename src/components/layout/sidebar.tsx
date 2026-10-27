@@ -46,13 +46,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             .toUpperCase() || "U";
 
     useEffect(() => {
-        const desktop = window.matchMedia("(min-width: 1024px)");
-        const closeOnDesktop = () => {
-            if (desktop.matches && open) onClose();
+        const outsideDrawer = window.matchMedia("(max-width: 767px), (min-width: 1024px)");
+        const closeOutsideTablet = () => {
+            if (outsideDrawer.matches && open) onClose();
         };
-        closeOnDesktop();
-        desktop.addEventListener("change", closeOnDesktop);
-        return () => desktop.removeEventListener("change", closeOnDesktop);
+        closeOutsideTablet();
+        outsideDrawer.addEventListener("change", closeOutsideTablet);
+        return () => outsideDrawer.removeEventListener("change", closeOutsideTablet);
     }, [open, onClose]);
 
     const content = (

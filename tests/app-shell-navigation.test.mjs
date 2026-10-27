@@ -174,8 +174,8 @@ test("mobile navigation uses a modal drawer with a trigger, accessible title and
     }
     assert.match(sidebar, /aria-label="Close navigation"/);
     assert.match(sidebar, /LifeOS navigation/);
-    assert.match(sidebar, /desktop.addEventListener\("change", closeOnDesktop\)/);
-    assert.match(sidebar, /desktop.removeEventListener\("change", closeOnDesktop\)/);
+    assert.match(sidebar, /outsideDrawer.addEventListener\("change", closeOutsideTablet\)/);
+    assert.match(sidebar, /outsideDrawer.removeEventListener\("change", closeOutsideTablet\)/);
     assert.match(sidebar, /group flex h-11 lg:h-9/);
     assert.doesNotMatch(sidebar, /-translate-x-full/);
 });
@@ -197,4 +197,24 @@ test("shared dialogs fit the dynamic viewport and mobile fields retain comfortab
     assert.match(dialog, /aria-label="Close dialog"/);
     assert.match(input, /h-11 sm:h-10/);
     assert.match(input, /text-base sm:text-sm/);
+});
+
+
+test("phone bottom navigation reuses routes, marks Finance on expense pages and reserves safe-area space", async () => {
+    const { BottomNavigation } = await import("../src/components/layout/bottom-navigation.tsx");
+    for (const [pathname, active] of [["/dashboard", "/dashboard"], ["/finance/expenses", "/finance"], ["/health", "/health"]]) {
+        state.pathname = pathname;
+        const html = render(BottomNavigation);
+        assert.match(html, /aria-label="Primary navigation"/);
+        assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
+        assert.ok(html.includes(`href="${active}" aria-current="page"`));
+        for (const item of sidebarNavigation) assert.ok(html.includes(`href="${item.href}"`));
+        assert.ok(html.includes("pb-[env(safe-area-inset-bottom)]"));
+        assert.match(html, /md:hidden/);
+    }
+    const shell = readFileSync(new URL("components/layout/app-shell.tsx", root), "utf8");
+    const header = readFileSync(new URL("components/layout/header.tsx", root), "utf8");
+    assert.ok(shell.includes("pb-[calc(5.5rem+env(safe-area-inset-bottom))]"));
+    assert.match(header, /hidden md:inline-flex lg:hidden/);
+    assert.match(shell, /lg:pl-62/);
 });

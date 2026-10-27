@@ -102,7 +102,7 @@ export function RecentHealthLogs({
                         return (
                             <article
                                 key={log.id}
-                                className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"
+                                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-3 md:flex md:gap-3 md:py-4 md:items-start md:justify-between"
                             >
                                 <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
@@ -117,7 +117,22 @@ export function RecentHealthLogs({
                                         )}
                                     </div>
 
-                                    <div className="mt-2 flex flex-wrap gap-2">
+                                    <div className="mt-1 text-xs leading-5 text-text-secondary md:hidden">
+                                        <p>{summary.slice(0, 2).join(" / ") || "No measurements recorded"}</p>
+                                        {summary.length > 2 && (
+                                            <details className="mt-1">
+                                                <summary className="min-h-11 cursor-pointer py-3 font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                                                    All {summary.length} measurements
+                                                </summary>
+                                                <ul className="grid grid-cols-2 gap-x-3 gap-y-1 pb-2">
+                                                    {summary.map((item) => (
+                                                        <li key={item}>{item}</li>
+                                                    ))}
+                                                </ul>
+                                            </details>
+                                        )}
+                                    </div>
+                                    <div className="mt-2 hidden flex-wrap gap-2 md:flex">
                                         {summary.map((item) => (
                                             <span
                                                 key={item}
@@ -129,7 +144,7 @@ export function RecentHealthLogs({
                                     </div>
                                 </div>
 
-                                <div className="flex shrink-0 items-center gap-3 sm:pt-0.5">
+                                <div className="flex shrink-0 flex-col items-end gap-0 md:flex-row md:items-center md:gap-3 md:pt-0.5">
                                     <button
                                         type="button"
                                         onClick={() => onEdit(log)}

@@ -14,7 +14,7 @@ export function RecentActivity() {
 
     return (
         <Card>
-            <div className="flex items-center justify-between border-b border-border-subtle p-5">
+            <div className="flex items-center justify-between border-b border-border-subtle p-3 md:p-5">
                 <div>
                     <p className="text-sm font-semibold text-text-primary">Recent activity</p>
                     <p className="mt-1 text-xs text-text-secondary">Your latest recorded health logs</p>
@@ -44,8 +44,8 @@ export function RecentActivity() {
             ) : (
                 <div className="divide-y divide-border-subtle">
                     {recentLogs.map((log) => (
-                        <div key={log.id} className="flex items-center gap-3 px-5 py-4">
-                            <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-elevated text-text-secondary">
+                        <div key={log.id} className="flex items-center gap-3 px-3 py-2.5 md:px-5 md:py-4">
+                            <div className="hidden md:flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-elevated text-text-secondary">
                                 <HeartPulse className="size-4" aria-hidden="true" />
                             </div>
                             <div className="min-w-0 flex-1">

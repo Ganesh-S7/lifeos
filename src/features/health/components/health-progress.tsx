@@ -50,8 +50,8 @@ function ProgressItem({ metric }: ProgressItemProps) {
     const percentage = metric.percentage ?? 0;
 
     return (
-        <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0 space-y-2">
+            <div className="flex flex-col items-start gap-1 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-2">
                 <span className="text-sm font-medium text-text-primary">
                     {metric.label}
                 </span>
@@ -132,9 +132,9 @@ export function HealthProgress({
             className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5"
             aria-labelledby="health-progress-title"
         >
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 md:flex md:items-center md:justify-between md:gap-4">
                 {/* Date navigation */}
-                <div>
+                <div className="contents md:block">
                     <h2
                         id="health-progress-title"
                         className="text-sm font-semibold text-text-primary"
@@ -142,7 +142,7 @@ export function HealthProgress({
                         {isToday ? "Today's progress" : "Daily progress"}
                     </h2>
 
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="col-span-2 row-start-2 mt-2 flex items-center gap-2">
                         <button
                             type="button"
                             aria-label="View previous day"
@@ -181,20 +181,21 @@ export function HealthProgress({
                                 onClick={() =>
                                     onSelectedDateChange(todayDate)
                                 }
-                                className="ml-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-hover"
+                                className="ml-1 min-h-11 md:min-h-0 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-hover"
                             >
                                 Today
                             </button>
                         )}
                     </div>
 
-                    <p className="mt-1 text-xs text-text-secondary">
+                    <p className="col-span-2 mt-1 text-xs text-text-secondary">
                         {formatDateDisplay(selectedDate)}
                     </p>
                 </div>
 
                 <Button
                     variant="outline"
+                    className="col-start-2 row-start-1"
                     onClick={onManageTargets}
                 >
                     <Settings2
@@ -207,7 +208,7 @@ export function HealthProgress({
 
             {/* Progress metrics */}
             {metrics.length > 0 ? (
-                <div className="mt-6 grid gap-x-8 gap-y-6 md:grid-cols-2">
+                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 md:mt-6 md:gap-x-8 md:gap-y-6">
                     {metrics.map((metric) => (
                         <ProgressItem
                             key={metric.key}

@@ -8,7 +8,7 @@ import {
 
 export function HealthOverviewSkeleton() {
     return (
-        <SkeletonRegion label="Loading your health data" className="space-y-7 lg:space-y-8">
+        <SkeletonRegion label="Loading your health data" className="space-y-5 md:space-y-7 lg:space-y-8">
             <section className="space-y-3">
                 <div>
                     <h2 className="text-base font-semibold text-text-primary">Health snapshot</h2>
@@ -19,10 +19,10 @@ export function HealthOverviewSkeleton() {
                 <StatCardsSkeleton />
             </section>
 
-            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-3 md:p-5">
                 <h2 className="text-sm font-semibold text-text-primary">Daily progress</h2>
                 <Skeleton className="mt-2 h-8 w-48" />
-                <div className="mt-6 grid gap-x-8 gap-y-6 md:grid-cols-2">
+                <div className="mt-4 grid grid-cols-2 gap-4 md:mt-6 md:gap-x-8 md:gap-y-6">
                     {Array.from({ length: 6 }, (_, index) => (
                         <div key={index} className="space-y-2">
                             <div className="flex justify-between gap-3">
@@ -36,7 +36,7 @@ export function HealthOverviewSkeleton() {
                 </div>
             </section>
 
-            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-3 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <h2 className="text-sm font-semibold text-text-primary">Health analytics</h2>
                     <Skeleton className="h-9 w-40" />
@@ -45,7 +45,7 @@ export function HealthOverviewSkeleton() {
                 <ChartSkeleton className="mt-4 h-72" />
             </section>
 
-            <section className="min-w-0 rounded-xl border border-border bg-surface p-5">
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-3 md:p-5">
                 <h2 className="text-sm font-semibold text-text-primary">Recent health logs</h2>
                 <p className="mt-1 text-xs text-text-secondary">
                     Review and manage your recent measurements.

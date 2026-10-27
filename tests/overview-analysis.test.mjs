@@ -346,7 +346,7 @@ test("all four Overview stats share one supporting row and accessible contextual
     for (const label of ["About monthly spending", "About net cash flow", "About weight", "About latest sleep"]) {
         assert.ok(html.includes(`aria-label="${label}"`), label);
     }
-    assert.equal((html.match(/class="mt-auto pt-3"/g) ?? []).length, 4);
+    assert.equal((html.match(/class="[^"\n]*mt-auto pt-3"/g) ?? []).length, 4);
     assert.equal((html.match(/aria-describedby=/g) ?? []).length, 4);
     assert.match(html, /Goal: 65 kg/);
     assert.match(html, /same elapsed days/);

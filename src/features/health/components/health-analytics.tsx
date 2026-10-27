@@ -358,7 +358,7 @@ export function HealthAnalytics({
             <div
                 role="group"
                 aria-label="Select a health metric"
-                className="flex flex-wrap gap-2"
+                className="flex flex-nowrap gap-2 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0"
             >
                 {analyticsMetrics.map((metric) => {
                     const isActive =
@@ -372,7 +372,7 @@ export function HealthAnalytics({
                             onClick={() =>
                                 setSelectedMetricKey(metric.key)
                             }
-                            className={`min-h-11 sm:min-h-0 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${isActive
+                            className={`shrink-0 min-h-11 sm:min-h-0 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${isActive
                                     ? "border-primary bg-surface-elevated text-text-primary"
                                     : "border-border text-text-secondary hover:bg-surface-hover hover:text-text-primary"
                                 }`}

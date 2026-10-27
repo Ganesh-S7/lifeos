@@ -103,8 +103,9 @@ export function HealthSummary({
                 </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
                 <Stat
+                    compactMobile
                     label="Weight"
                     value={weightValue}
                     description={weightDescription}
@@ -112,6 +113,7 @@ export function HealthSummary({
                 />
 
                 <Stat
+                    compactMobile
                     label="Steps today"
                     value={stepsValue}
                     description={stepsDescription}
@@ -119,6 +121,7 @@ export function HealthSummary({
                 />
 
                 <Stat
+                    compactMobile
                     label="Latest sleep"
                     value={sleepValue}
                     description={sleepDescription}
@@ -126,6 +129,7 @@ export function HealthSummary({
                 />
 
                 <Stat
+                    compactMobile
                     label="Nutrition"
                     value={caloriesValue}
                     description={nutritionDescription}

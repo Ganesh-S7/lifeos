@@ -20,8 +20,8 @@ export function HealthOverview() {
     const progress = getTodayHealthProgress(todayLog, targets);
 
     return (
-        <Card>
-            <div className="flex items-start justify-between gap-3 border-b border-border-subtle p-5">
+        <Card className="border-0 bg-transparent shadow-none md:border md:bg-surface md:shadow-sm">
+            <div className="flex items-start justify-between gap-3 md:border-b border-border-subtle py-2 md:p-5">
                 <div>
                     <p className="text-sm font-semibold text-text-primary">Today</p>
                     <p className="mt-1 text-xs text-text-secondary">Health &amp; activity</p>
@@ -46,26 +46,29 @@ export function HealthOverview() {
                     </SkeletonRegion>
                 )
             ) : !todayLog ? (
-                <div className="space-y-2 p-5">
+                <div className="space-y-1 border-l-2 border-border pl-3 py-2 md:space-y-2 md:border-l-0 md:p-5">
                     <p className="text-sm font-medium text-text-primary">No health measurements recorded today</p>
                     <p className="text-sm text-text-secondary">
                         Record your daily measurements in Health to see your activity and target progress here.
                     </p>
+                    <Link href="/health" className="inline-flex min-h-11 items-center text-xs font-medium text-primary hover:underline">
+                        Log today&apos;s health
+                    </Link>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 divide-x divide-y divide-border-subtle sm:grid-cols-4 sm:divide-y-0">
+                <div className="grid grid-cols-2 gap-3 md:gap-0 md:divide-x md:divide-border-subtle sm:grid-cols-4">
                     {metrics.map((metric) => {
                         const Icon = metric.icon;
                         const value = todayLog[metric.field];
                         const target = progress.find((item) => item.key === metric.key);
 
                         return (
-                            <div key={metric.key} className="p-5">
+                            <div key={metric.key} className="min-w-0 py-2 md:p-5">
                                 <div className="flex items-center gap-2 text-text-muted">
                                     <Icon className="size-3.5" aria-hidden="true" />
                                     <span className="text-[11px]">{metric.label}</span>
                                 </div>
-                                <p className="mt-3 text-lg font-semibold text-text-primary">
+                                <p className="mt-1 md:mt-3 text-base md:text-lg font-semibold text-text-primary">
                                     {value !== undefined ? formatProgressValue(value, metric.key) : "Not recorded"}
                                 </p>
                                 <p className="mt-1 text-[11px] text-text-muted">

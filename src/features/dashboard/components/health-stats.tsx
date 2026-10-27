@@ -13,16 +13,16 @@ export function HealthStats() {
 
     if (!ready) {
         return (
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
                 {failed ? (
                     <LoadError message="Unable to load your health data. Please try again." onRetry={retry} />
                 ) : (
-                    <SkeletonRegion label="Loading health statistics" className="grid gap-3 sm:grid-cols-2 lg:gap-4">
+                    <SkeletonRegion label="Loading health statistics" className="grid grid-cols-2 gap-3 lg:gap-4">
                         {[0, 1].map((index) => (
-                            <div key={index} className="space-y-4 rounded-xl border border-border bg-surface p-5">
-                                <Skeleton variant="text" className="w-28" />
-                                <Skeleton className="h-7 w-32" />
-                                <Skeleton variant="text" className="w-40" />
+                            <div key={index} className="min-w-0 space-y-3 rounded-xl border border-border bg-surface p-3 md:p-5">
+                                <Skeleton variant="text" className="w-full max-w-28" />
+                                <Skeleton className="h-7 w-full max-w-32" />
+                                <Skeleton variant="text" className="w-full max-w-40" />
                             </div>
                         ))}
                     </SkeletonRegion>
@@ -43,6 +43,7 @@ export function HealthStats() {
     return (
         <>
             <Stat
+                compactMobile
                 label="Weight"
                 value={weight?.weightKg !== undefined ? `${formatHealthNumber(weight.weightKg)} kg` : "—"}
                 className="min-w-0"
@@ -60,6 +61,7 @@ export function HealthStats() {
                 )}
             />
             <Stat
+                compactMobile
                 label="Latest sleep"
                 value={sleep?.sleepMinutes !== undefined ? formatHealthDuration(sleep.sleepMinutes) : "—"}
                 className="min-w-0"

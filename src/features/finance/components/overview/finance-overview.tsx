@@ -12,6 +12,7 @@ import { categorySpending, financialSnapshot } from "../../utils/finance-calcula
 import { buildFinanceChartData } from "../../utils/finance-chart-data";
 import { monthlyActivityComparison, overallPositionComparison } from "../../utils/finance-comparisons";
 import { CategoryBreakdownChart } from "./category-breakdown-chart";
+import { ChartPanel, ChartSwitcher } from "@/components/ui/chart-switcher";
 import { FinanceCharts } from "./finance-charts";
 import { FinanceOverviewSkeleton } from "./finance-overview-skeleton";
 import { FinanceRefreshNotice } from "../finance-refresh-notice";
@@ -212,12 +213,13 @@ function FinanceOverviewContent() {
                                 Manage finances
                             </Button>
                         </div>
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
                             {groups.map((group) => (
                                 <Stat
+                                    compactMobile
                                     key={group.kind}
                                     icon={group.icon}
-                                    className="sm:min-h-48"
+                                    className="md:min-h-48"
                                     label={group.label}
                                     value={formatCurrency(group.value)}
                                     description={group.description}
@@ -240,8 +242,9 @@ function FinanceOverviewContent() {
                                 />
                             ))}
                             <Stat
+                                compactMobile
                                 icon={Scale}
-                                className="sm:min-h-48"
+                                className="md:min-h-48"
                                 label="Net worth"
                                 value={formatCurrency(snapshot.netWorth)}
                                 description="Bank balance + investments − debt"
@@ -278,12 +281,13 @@ function FinanceOverviewContent() {
                                 Record income or transfer
                             </Button>
                         </div>
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
                             {monthCards.map((item) => (
                                 <Stat
+                                    compactMobile
                                     key={item.label}
                                     icon={item.icon}
-                                    className="min-h-30"
+                                    className="md:min-h-30"
                                     label={item.label}
                                     value={item.value}
                                     description=""
@@ -298,8 +302,19 @@ function FinanceOverviewContent() {
                             ))}
                         </div>
                     </section>
-                    <FinanceCharts data={chartData} />
-                    <CategoryBreakdownChart data={categories} />
+                    <ChartSwitcher
+                        label="Financial trends"
+                        options={[
+                            { value: "net-worth", label: "Net worth" },
+                            { value: "cash-flow", label: "Cash flow" },
+                            { value: "categories", label: "Categories" },
+                        ]}
+                    >
+                        <FinanceCharts data={chartData} />
+                        <ChartPanel value="categories">
+                            <CategoryBreakdownChart data={categories} />
+                        </ChartPanel>
+                    </ChartSwitcher>
                     <section className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-semibold text-text-primary">Recent transactions</h2>
@@ -308,13 +323,13 @@ function FinanceOverviewContent() {
                         {recent.length === 0 && <p className="mt-4 text-sm text-text-muted">No transactions yet.</p>}
                         <div className="mt-3 divide-y divide-border-subtle">
                             {recent.map((item) => (
-                                <div key={item.id} className="flex min-w-0 flex-col items-start gap-2 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                                <div key={item.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-3 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
                                     <div className="min-w-0 max-w-full break-words">
                                         <p className="text-sm font-medium text-text-primary">{item.description}</p>
                                         <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")} · {formatDateDisplay(item.date)}</p>
                                     </div>
-                                    <div className="flex max-w-full flex-wrap items-center gap-3">
-                                        <span className="text-sm font-semibold text-text-primary">
+                                    <div className="grid max-w-40 grid-cols-2 items-center gap-x-2 gap-y-1 sm:flex sm:max-w-full sm:flex-wrap sm:gap-3">
+                                        <span className="col-span-2 break-words text-right text-sm font-semibold tabular-nums text-text-primary">
                                             {item.type === "income" || item.type === "investment_sale" ? "+" : item.type === "transfer" ? "↔ " : "−"}{formatCurrency(item.amount)}
                                         </span>
                                         {item.type !== "expense" && <button className="min-h-11 px-2 text-xs text-primary sm:min-h-0 sm:px-0" onClick={() => open("transaction", item.id)}>Edit</button>}

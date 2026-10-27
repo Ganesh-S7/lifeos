@@ -115,9 +115,10 @@ export function ExpensesSummary({
     ];
 
     return (
-        <section className="grid gap-3 sm:grid-cols-2 lg:gap-4 xl:grid-cols-4">
+        <section className="grid grid-cols-2 gap-3 lg:gap-4 xl:grid-cols-4">
             {stats.map((stat) => (
                 <Stat
+                    compactMobile
                     key={stat.label}
                     label={stat.label}
                     value={stat.value}

@@ -10,15 +10,15 @@ export function StatCardsSkeleton({
     actions?: boolean;
 }) {
     return (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
             {Array.from({ length: 4 }, (_, index) => (
-                <Card key={index} className={cn("space-y-3 p-5", className)}>
+                <Card key={index} className={cn("min-w-0 space-y-3 p-3 md:p-5", className)}>
                     <div className="flex justify-between gap-4">
-                        <div className="flex-1 space-y-3">
+                        <div className="min-w-0 flex-1 space-y-3">
                             <Skeleton variant="text" className="w-24 max-w-full" />
                             <Skeleton className="h-7 w-32 max-w-full" />
                         </div>
-                        <Skeleton className="size-9 shrink-0" />
+                        <Skeleton className="hidden size-9 shrink-0 md:block" />
                     </div>
                     <Skeleton variant="text" className="w-4/5" />
                     {actions && (

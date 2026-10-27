@@ -15,19 +15,19 @@ export function OverviewStats() {
 
     return (
         <section className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 lg:gap-4 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:gap-4 xl:grid-cols-4">
                 {!ready ? (
-                    <div className="sm:col-span-2">
+                    <div className="col-span-2">
                         {loadError ? <LoadError message={loadError} onRetry={retry} /> : (
                             <SkeletonRegion
                                 label="Loading financial statistics"
-                                className="grid gap-3 sm:grid-cols-2 lg:gap-4"
+                                className="grid grid-cols-2 gap-3 lg:gap-4"
                             >
                                 {[0, 1].map((index) => (
-                                    <div key={index} className="space-y-4 rounded-xl border border-border p-5">
-                                        <Skeleton variant="text" className="w-28" />
-                                        <Skeleton className="h-7 w-32" />
-                                        <Skeleton variant="text" className="w-40" />
+                                    <div key={index} className="min-w-0 space-y-3 rounded-xl border border-border p-3 md:p-5">
+                                        <Skeleton variant="text" className="w-full max-w-28" />
+                                        <Skeleton className="h-7 w-full max-w-32" />
+                                        <Skeleton variant="text" className="w-full max-w-40" />
                                     </div>
                                 ))}
                             </SkeletonRegion>
@@ -36,6 +36,7 @@ export function OverviewStats() {
                 ) : (
                     <>
                         <Stat
+                            compactMobile
                             label="Monthly spending"
                             value={formatCurrency(activity.current.expenses)}
                             className="min-w-0"
@@ -50,6 +51,7 @@ export function OverviewStats() {
                             footer={<FinanceComparison comparison={activity.expenses} period="vs previous period" />}
                         />
                         <Stat
+                            compactMobile
                             label="Net cash flow"
                             value={formatCurrency(activity.current.netCashFlow)}
                             className="min-w-0"
