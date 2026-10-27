@@ -5,6 +5,7 @@ import { registerHooks } from "node:module";
 import { readFileSync, existsSync } from "node:fs";
 import React from "react";
 import ts from "typescript";
+import * as Popover from "@radix-ui/react-popover";
 
 const root = new URL("../src/", import.meta.url);
 const reactUrl = import.meta.resolve("react");
@@ -229,4 +230,112 @@ test("loading and failed category reads prevent create and retain an explicit re
     find(tree, (node) => node.type === "button").props.onClick();
     assert.equal(forced, true);
     assert.equal(state.createCalls, 0);
+});
+
+test("category options are portalled, anchored and collision-aware without entering form flow", () => {
+    const props = { value: "", onChange() {}, onBusyChange() {} };
+    input(render(ExpenseCategoryCombobox, props)).props.onFocus();
+    const tree = render(ExpenseCategoryCombobox, props);
+    assert.equal(tree.type, Popover.Root);
+    assert.equal(tree.props.modal, false);
+    const anchor = find(tree, (node) => node.type === Popover.Anchor);
+    assert.ok(nodes(anchor).some((node) => node.props.role === "combobox"));
+    assert.ok(!nodes(anchor).some((node) => node.props.role === "listbox"));
+    const portal = find(tree, (node) => node.type === Popover.Portal);
+    const popup = find(portal, (node) => node.type === Popover.Content);
+    assert.equal(popup.props.id, input(tree).props["aria-controls"]);
+    assert.equal(popup.props.role, "listbox");
+    assert.equal(popup.props.side, "bottom");
+    assert.equal(popup.props.align, "start");
+    assert.equal(popup.props.avoidCollisions, true);
+    assert.equal(popup.props.collisionPadding, 12);
+    assert.equal(popup.props.hideWhenDetached, true);
+    for (const token of ["z-60", "overflow-y-auto", "overscroll-contain", "bg-surface-elevated", "--radix-popover-trigger-width", "--radix-popover-content-available-height"]) {
+        assert.ok(popup.props.className.includes(token), token);
+    }
+    let prevented = false;
+    popup.props.onOpenAutoFocus({ preventDefault() { prevented = true; } });
+    assert.equal(prevented, true, "Opening leaves keyboard focus on the search input");
+});
+
+test("arrow navigation scrolls only the options viewport, not dialog/document ancestors", () => {
+    state.finance.categories = Array.from({ length: 6 }, (_, index) => ({ id: String(index), name: `Category ${index}`, builtIn: false }));
+    const props = { value: "", onChange() {}, onBusyChange() {} };
+    input(render(ExpenseCategoryCombobox, props)).props.onFocus();
+    let tree = render(ExpenseCategoryCombobox, props);
+    const popup = find(tree, (node) => node.type === Popover.Content);
+    const list = {
+        scrollTop: 0, clientTop: 1, clientHeight: 100,
+        getBoundingClientRect() { return { top: 100 }; },
+        children: {
+            item(index) {
+                return {
+                    getBoundingClientRect() {
+                        const top = 101 + index * 44 - list.scrollTop;
+                        return { top, bottom: top + 44 };
+                    },
+                    scrollIntoView() { assert.fail("Must not scroll ancestors"); },
+                };
+            },
+        },
+    };
+    popup.props.ref.current = list;
+    popup.props.onOpenAutoFocus({ preventDefault() {} });
+    assert.equal(list.scrollTop, 0);
+    for (let index = 0; index < 2; index++) {
+        input(tree).props.onKeyDown({ key: "ArrowDown", preventDefault() {} });
+        tree = render(ExpenseCategoryCombobox, props);
+    }
+    assert.equal(list.scrollTop, 32);
+    input(tree).props.onKeyDown({ key: "ArrowUp", preventDefault() {} });
+    tree = render(ExpenseCategoryCombobox, props);
+    assert.equal(list.scrollTop, 32);
+    input(tree).props.onKeyDown({ key: "ArrowUp", preventDefault() {} });
+    render(ExpenseCategoryCombobox, props);
+    assert.equal(list.scrollTop, 0);
+});
+
+test("selection restores input focus without scrolling or reopening; outside dismissal keeps the next field focused", () => {
+    let chosen;
+    const props = { value: "", onChange(value) { chosen = value; }, onBusyChange() {} };
+    input(render(ExpenseCategoryCombobox, props)).props.onFocus();
+    let tree = render(ExpenseCategoryCombobox, props);
+    const popup = find(tree, (node) => node.type === Popover.Content);
+    const focusCalls = [];
+    input(tree).props.ref.current = {
+        focus(options) {
+            focusCalls.push(options);
+            input(tree).props.onFocus();
+        },
+    };
+    find(tree, (node) => node.props.role === "option").props.onClick();
+    popup.props.onCloseAutoFocus({ preventDefault() {} });
+    assert.equal(chosen, "Food");
+    assert.deepEqual(focusCalls, [{ preventScroll: true }]);
+    assert.equal(render(ExpenseCategoryCombobox, props).props.open, false);
+
+    input(render(ExpenseCategoryCombobox, props)).props.onFocus();
+    tree = render(ExpenseCategoryCombobox, props);
+    const outsidePopup = find(tree, (node) => node.type === Popover.Content);
+    tree.props.onOpenChange(false);
+    outsidePopup.props.onCloseAutoFocus({ preventDefault() {} });
+    assert.equal(focusCalls.length, 1, "Do not steal focus back from Account, Date or Note");
+});
+
+test("portalled retry focus stays open and popup Escape dismisses only the popup", () => {
+    const props = { value: "Food", onChange() {}, onBusyChange() {} };
+    input(render(ExpenseCategoryCombobox, props)).props.onFocus();
+    let tree = render(ExpenseCategoryCombobox, props);
+    const popup = find(tree, (node) => node.type === Popover.Content);
+    const retryTarget = {};
+    popup.props.ref.current = { contains(target) { return target === retryTarget; } };
+    const wrapper = find(tree, (node) => node.props.onBlur);
+    wrapper.props.onBlur({ currentTarget: { contains() { return false; } }, relatedTarget: retryTarget });
+    assert.equal(render(ExpenseCategoryCombobox, props).props.open, true);
+    let prevented = false;
+    let stopped = false;
+    popup.props.onEscapeKeyDown({ preventDefault() { prevented = true; }, stopPropagation() { stopped = true; } });
+    assert.equal(prevented, true);
+    assert.equal(stopped, true);
+    assert.equal(render(ExpenseCategoryCombobox, props).props.open, false);
 });
