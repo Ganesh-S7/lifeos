@@ -33,7 +33,9 @@ export const expenseSchema = z.object({
 
     category: z
         .string()
-        .min(1, "Please select a category."),
+        .trim()
+        .min(1, "Please select a category.")
+        .max(100, "Category name is too long."),
 
     account: z
         .string()

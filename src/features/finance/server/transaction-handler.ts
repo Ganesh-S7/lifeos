@@ -8,6 +8,7 @@ import {
     financeTransactionRequestSchema,
 } from "../schemas/finance-request-schema";
 import { LedgerConflictError } from "./finance-ledger";
+import { expenseCategoryRequestSchema } from "../schemas/expense-category-schema";
 import {
     mutateTransaction,
     TransactionMutationError,
@@ -57,6 +58,9 @@ export async function handleTransactionMutation(
             }, 400);
         }
         const input = parsed.data;
+        if (input.type === "expense" && !expenseCategoryRequestSchema.safeParse({ name: input.category }).success) {
+            return jsonNoStore({ error: "INVALID_INPUT", message: "Please provide a valid expense category." }, 400);
+        }
         const result = await mutateTransaction(
             prisma,
             session.user.id,

@@ -36,6 +36,43 @@ const { accountBalance, investmentValue } = await import("../src/features/financ
 const income = { type: "income", amount: 50.25, description: "Salary", date: "2026-10-01", accountId: "bank" };
 const expense = { ...income, type: "expense", description: "Groceries", category: "Food" };
 
+test("custom expense categories link to owned records without changing merchant, note or recordedAt", async () => {
+    const db = setup();
+    const input = { ...expense, category: "Groceries", description: "Local milk booth", note: "Milk" };
+    const created = await request("POST", input);
+    assert.equal(created.status, 201);
+    assert.equal(db.records.expenseCategories.length, 1);
+    assert.equal(db.records.transactions[0].categoryId, db.records.expenseCategories[0].id);
+    assert.equal(db.records.transactions[0].userId, db.records.expenseCategories[0].userId);
+    const original = created.body.transaction;
+    const edited = await request("PUT", { ...input, amount: 10 }, original.id);
+    assert.equal(edited.status, 200);
+    assert.equal(edited.body.transaction.category, "Groceries");
+    assert.equal(edited.body.transaction.description, "Local milk booth");
+    assert.equal(edited.body.transaction.note, "Milk");
+    assert.equal(edited.body.transaction.recordedAt, original.recordedAt);
+    assert.equal(db.records.expenseCategories.length, 1);
+    assert.equal((await request("DELETE", undefined, original.id)).status, 200);
+    assert.equal(db.records.expenseCategories.length, 1, "Deleting an expense retains its reusable category");
+});
+
+test("failed ledger validation rolls back the category, expense and financial position together", async () => {
+    const db = setup();
+    const before = structuredClone(db.records.expenseCategories);
+    assert.equal((await request("POST", { ...expense, category: "New category", amount: 101 })).status, 409);
+    assert.deepEqual(db.records.expenseCategories, before);
+    assert.equal(db.records.transactions.length, 0);
+    noHistory(db);
+});
+
+test("invalid custom category names fail with validation responses before writing ledger data", async () => {
+    const db = setup();
+    const response = await request("POST", { ...expense, category: "bad\u0000name" });
+    assert.equal(response.status, 400);
+    assert.equal(response.body.error, "INVALID_INPUT");
+    assert.equal(db.options.length, 0);
+});
+
 function setup(initial = records(), settings) {
     dependencies.database = database(initial, settings);
     dependencies.getSession = async () => ({ user: { id: userId } });

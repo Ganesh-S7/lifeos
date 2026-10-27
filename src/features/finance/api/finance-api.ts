@@ -9,6 +9,7 @@ import type {
     LiabilityDto,
     LiabilityInput,
 } from "../types/finance-api";
+import type { ExpenseCategory, ExpenseCategoryRequest } from "../schemas/expense-category-schema";
 
 export class FinanceApiError extends Error {
     /** Zero means no HTTP response was received. */
@@ -24,10 +25,16 @@ export class FinanceApiError extends Error {
 }
 
 type JsonObject = Record<string, unknown>;
-type ResourceKey = "account" | "investment" | "liability" | "transaction";
+type ResourceKey = "account" | "investment" | "liability" | "transaction" | "category";
+type RequestInput = BankAccountInput | InvestmentInput | LiabilityInput | FinanceTransactionInput | ExpenseCategoryRequest;
 
 function isObject(value: unknown): value is JsonObject {
     return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isExpenseCategory(value: unknown): value is ExpenseCategory {
+    return isObject(value) && typeof value.name === "string" && typeof value.builtIn === "boolean" &&
+        (value.id === null || typeof value.id === "string");
 }
 
 function invalidResponse(status: number) {
@@ -42,7 +49,7 @@ async function request(
     path: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     fallback: string,
-    input?: BankAccountInput | InvestmentInput | LiabilityInput | FinanceTransactionInput,
+    input?: RequestInput,
 ): Promise<{ payload: JsonObject; status: number }> {
     // Serialize before the network boundary; never silently omit a failed request body.
     let body: string | undefined;
@@ -94,7 +101,7 @@ async function saveResource<T>(
     path: string,
     method: "POST" | "PUT",
     key: ResourceKey,
-    input: BankAccountInput | InvestmentInput | LiabilityInput | FinanceTransactionInput,
+    input: RequestInput,
     fallback: string,
 ): Promise<T> {
     const { payload, status } = await request(path, method, fallback, input);
@@ -230,6 +237,20 @@ async function deleteTransaction(id: string): Promise<void> {
 
 /** No persistence, notifications, retries, or UI/store side effects. */
 export const financeApi = {
+    async getCategories(): Promise<ExpenseCategory[]> {
+        const { payload, status } = await request("/api/finance/categories", "GET", "Unable to load expense categories.");
+        if (!Array.isArray(payload.categories) || !payload.categories.every(isExpenseCategory)) {
+            throw invalidResponse(status);
+        }
+        return payload.categories as ExpenseCategory[];
+    },
+    async createCategory(input: ExpenseCategoryRequest): Promise<ExpenseCategory> {
+        const category = await saveResource<ExpenseCategory>(
+            "/api/finance/categories", "POST", "category", input, "Unable to create the expense category.",
+        );
+        if (!isExpenseCategory(category)) throw invalidResponse(200);
+        return category;
+    },
     getFinanceData,
     createAccount,
     updateAccount,

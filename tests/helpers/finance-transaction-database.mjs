@@ -31,7 +31,7 @@ export function entry(id = "owned", overrides = {}) {
 }
 
 export function records() {
-    return { accounts: [bank()], investments: [], liabilities: [], transactions: [], positionHistory: [] };
+    return { accounts: [bank()], investments: [], liabilities: [], transactions: [], positionHistory: [], expenseCategories: [] };
 }
 
 // Staged in-memory writes test the transaction callback's orchestration, not MySQL
@@ -72,6 +72,22 @@ export function database(initial = records(), settings = {}) {
                         },
                     };
                 }
+                staged.expenseCategories ??= [];
+                tx.expenseCategory = {
+                    async findUnique(query) {
+                        log("expenseCategory.findUnique", query);
+                        const where = query.where.userId_normalizedName;
+                        assert.equal(where.userId, userId);
+                        return staged.expenseCategories.find((row) => matches(row, where)) ?? null;
+                    },
+                    async create(query) {
+                        log("expenseCategory.create", query);
+                        assert.equal(query.data.userId, userId);
+                        const row = { ...query.data, id: `category-${staged.expenseCategories.length + 1}`, createdAt: new Date() };
+                        staged.expenseCategories.push(row);
+                        return row;
+                    },
+                };
                 tx.bankAccount.findFirst = async (query) => {
                     log("bankAccount.findFirst", query);
                     assert.equal(query.where.userId, userId);

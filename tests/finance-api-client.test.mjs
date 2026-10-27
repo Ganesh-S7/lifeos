@@ -241,5 +241,25 @@ test("client module loads and operates with no runtime imports or notification d
     // Sonner, notify, schemas, server services and Prisma. Actual requests need only fetch.
     assert.deepEqual(await financeApi.getFinanceData(), empty);
     assert.equal(calls.length, 1);
-    assert.equal(Object.keys(financeApi).length, 13);
+    assert.equal(Object.keys(financeApi).length, 15);
+});
+
+test("category API uses the authenticated same-origin request path and returns persisted choices", async (t) => {
+    const category = { id: "owned-category", name: "Groceries", builtIn: false };
+    const calls = mockFetch(t, (_path, options) => options.method === "GET"
+        ? json({ categories: [category] }) : json({ category }));
+    assert.deepEqual(await financeApi.getCategories(), [category]);
+    assert.deepEqual(await financeApi.createCategory({ name: "Groceries" }), category);
+    assert.equal(calls.length, 2);
+    for (const { url, options } of calls) {
+        assert.equal(url, "/api/finance/categories");
+        assert.equal(options.credentials, "same-origin");
+        assert.equal(options.cache, "no-store");
+    }
+    assert.deepEqual(JSON.parse(calls[1].options.body), { name: "Groceries" });
+});
+
+test("category reads reject malformed envelopes instead of displaying invented choices", async (t) => {
+    mockFetch(t, () => json({ categories: [{ name: "Groceries" }] }));
+    await assert.rejects(financeApi.getCategories(), (error) => error.code === "INVALID_RESPONSE");
 });

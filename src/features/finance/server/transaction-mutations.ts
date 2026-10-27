@@ -3,6 +3,7 @@ import type { FinanceTransactionRequest } from "../schemas/finance-request-schem
 import { financeDateToDatabase, toFinanceTransactionDto } from "./finance-dto";
 import { validateFinanceLedger } from "./finance-ledger";
 import { writeFinancialPosition } from "./finance-position";
+import { ensureExpenseCategory } from "./expense-categories";
 
 export type SupportedTransactionRequest = FinanceTransactionRequest;
 
@@ -104,13 +105,20 @@ export async function mutateTransaction(
             });
             if (result.count === 0) throw notFound();
         } else {
+            const category = mutation.input.type === "expense"
+                ? await ensureExpenseCategory(transaction, userId, mutation.input.category)
+                : null;
+            const categoryName = "category" in mutation.input ? mutation.input.category : undefined;
             const fields = {
                 type: mutation.input.type,
                 amount: mutation.input.amount.toString(),
                 description: mutation.input.description,
                 date: financeDateToDatabase(mutation.input.date),
                 accountId: mutation.input.accountId,
-                category: "category" in mutation.input ? mutation.input.category ?? null : null,
+                category: category
+                    ? (existing && existing.category === categoryName ? existing.category : category.name)
+                    : ("category" in mutation.input ? mutation.input.category ?? null : null),
+                categoryId: category?.id ?? null,
                 note: mutation.input.note ?? null,
                 destinationAccountId: mutation.input.type === "transfer"
                     ? mutation.input.destinationAccountId : null,

@@ -32,6 +32,7 @@ model User {
   liabilities     Liability[]
   transactions    FinanceTransaction[]
   positionHistory FinancialPositionSnapshot[]
+  expenseCategories ExpenseCategory[]
 
   healthLogs    HealthLog[]
   healthTargets HealthTargets?
@@ -164,6 +165,7 @@ model FinanceTransaction {
   date                 DateTime               @db.Date
   recordedAt           DateTime               @default(now())
   category             String?
+  categoryId           String?
   accountId            String
   destinationAccountId String?
   investmentId         String?
@@ -177,11 +179,30 @@ model FinanceTransaction {
 
   investment Investment? @relation(fields: [investmentId], references: [id], onDelete: Restrict)
 
+  expenseCategory ExpenseCategory? @relation(fields: [categoryId, userId], references: [id, userId], onDelete: Restrict)
+
   @@index([userId, date])
   @@index([accountId])
   @@index([destinationAccountId])
   @@index([investmentId])
+  @@index([categoryId, userId])
   @@map("finance_transactions")
+}
+
+// Category text remains on transactions as the historical display label.
+// Built-in choices are code-defined; rows are created only on explicit user actions.
+model ExpenseCategory {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String   @db.VarChar(100)
+  normalizedName String   @db.VarChar(200)
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   FinanceTransaction[]
+
+  @@unique([userId, normalizedName])
+  @@unique([id, userId])
+  @@map("expense_categories")
 }
 
 model FinancialPositionSnapshot {

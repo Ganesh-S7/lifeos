@@ -23,7 +23,10 @@ import {
 } from "../../schemas/expense-schema";
 import { Expense } from "../../types/expense";
 import { parseDateValue } from "@/lib/utils/date";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { ExpenseCategoryCombobox } from "./expense-category-combobox";
+import { pendingExpenseAccount } from "../../utils/expense-account";
 import { useFinanceMutation } from "../../hooks/use-finance-mutation";
 import type { FinanceMutationCallback } from "../../utils/finance-mutation";
 
@@ -34,22 +37,13 @@ interface AddExpenseDialogProps {
     expense?: Expense | null;
     accounts: { label: string; value: string }[];
     error?: string;
+    accountsLoading?: boolean;
 }
-
-const categoryOptions = [
-    { label: "Food", value: "Food" },
-    { label: "Shopping", value: "Shopping" },
-    { label: "Transport", value: "Transport" },
-    { label: "Bills", value: "Bills" },
-    { label: "Health", value: "Health" },
-    { label: "Entertainment", value: "Entertainment" },
-    { label: "Other", value: "Other" },
-];
 
 const defaultValues: ExpenseFormInput = {
     amount: undefined,
     merchant: "",
-    category: "Shopping",
+    category: "",
     account: "",
     date: new Date(),
     note: "",
@@ -62,14 +56,20 @@ export function AddExpenseDialog({
     expense,
     accounts,
     error,
+    accountsLoading = false,
 }: AddExpenseDialogProps) {
     const mutation = useFinanceMutation();
+    const categoryBusy = useRef(false);
+    const [categorySaving, setCategorySaving] = useState(false);
     const [submissionError, setSubmissionError] = useState("");
     const {
         register,
         handleSubmit,
         reset,
         control,
+        getValues,
+        getFieldState,
+        setValue,
         formState: { errors, isSubmitting },
     } = useForm<
         ExpenseFormInput,
@@ -82,6 +82,10 @@ export function AddExpenseDialog({
 
     const handleFormSubmit = async (data: ExpenseFormValues) => {
         setSubmissionError("");
+        if (categoryBusy.current || accountsLoading || !accounts.some((account) => account.value === data.account)) {
+            setSubmissionError("Select an available bank account before saving this expense.");
+            return;
+        }
         return mutation.run(() => onSubmit(data), {
             onSuccess: () => onOpenChange(false),
             onError: (cause) => setSubmissionError(
@@ -91,7 +95,7 @@ export function AddExpenseDialog({
     };
 
     const handleCancel = () => {
-        if (mutation.isPending() || isSubmitting) return;
+        if (mutation.isPending() || isSubmitting || categoryBusy.current) return;
         setSubmissionError("");
         reset();
         onOpenChange(false);
@@ -110,15 +114,27 @@ export function AddExpenseDialog({
                 note: expense.note ?? "",
             });
         } else {
-            reset(defaultValues);
+            reset({ ...defaultValues, date: new Date() });
         }
     }, [open, expense, reset]);
+
+    useEffect(() => {
+        if (!open || expense || accountsLoading) return;
+        const current = getValues("account");
+        const next = pendingExpenseAccount(current, getFieldState("account").isDirty, accounts);
+        if (next !== current) setValue("account", next, { shouldDirty: false });
+    }, [open, expense, accounts, accountsLoading, getValues, getFieldState, setValue]);
+
+    function handleCategoryBusy(busy: boolean) {
+        categoryBusy.current = busy;
+        setCategorySaving(busy);
+    }
 
     return (
         <Dialog
             open={open}
             onOpenChange={(nextOpen) => {
-                if (mutation.isPending() || isSubmitting) return;
+                if (mutation.isPending() || isSubmitting || categoryBusy.current) return;
                 setSubmissionError("");
                 onOpenChange(nextOpen);
             }}
@@ -137,10 +153,10 @@ export function AddExpenseDialog({
                 </DialogHeader>
 
                 <form
-                    onSubmit={handleSubmit(handleFormSubmit)}
+                    onSubmit={(event) => handleSubmit(handleFormSubmit)(event)}
                     className="mt-6 space-y-5"
                 >
-                    <fieldset disabled={isSubmitting || mutation.isPendingState} className="space-y-5">
+                    <fieldset disabled={isSubmitting || mutation.isPendingState || categorySaving} className="space-y-5">
                         {/* Amount */}
                         <div className="space-y-2">
                             <label
@@ -158,6 +174,7 @@ export function AddExpenseDialog({
                                 <Input
                                     id="amount"
                                     placeholder="0.00"
+                                    inputMode="decimal"
                                     maxLength={10}
                                     className="pl-8"
                                     {...register("amount", {
@@ -179,14 +196,19 @@ export function AddExpenseDialog({
                                 htmlFor="merchant"
                                 className="text-xs font-medium text-text-primary"
                             >
-                                Merchant
+                                Merchant / Store
                             </label>
 
                             <Input
                                 id="merchant"
-                                placeholder="e.g. Swiggy, Amazon, Uber"
+                                placeholder="e.g. Nandini Milk Booth, Swiggy, local food stall"
+                                aria-describedby="merchant-help"
                                 {...register("merchant")}
                             />
+
+                            <p id="merchant-help" className="text-xs text-text-secondary">
+                                Where you spent the money, not what you purchased.
+                            </p>
 
                             {errors.merchant && (
                                 <p className="text-xs text-danger">
@@ -201,14 +223,10 @@ export function AddExpenseDialog({
                                 name="category"
                                 control={control}
                                 render={({ field, fieldState }) => (
-                                    <Select
-                                        id="category"
-                                        label="Category"
-                                        options={categoryOptions}
+                                    <ExpenseCategoryCombobox
                                         value={field.value}
-                                        onChange={(value) => field.onChange(value ?? "")}
-                                        placeholder="Select category"
-                                        required
+                                        onChange={field.onChange}
+                                        onBusyChange={handleCategoryBusy}
                                         error={fieldState.error?.message}
                                     />
                                 )}
@@ -224,13 +242,22 @@ export function AddExpenseDialog({
                                         options={accounts}
                                         value={field.value}
                                         onChange={(value) => field.onChange(value ?? "")}
-                                        placeholder="Select account"
+                                        placeholder={accountsLoading ? "Loading accounts..." : "Select account"}
+                                        disabled={accountsLoading || accounts.length === 0}
                                         required
                                         error={fieldState.error?.message}
                                     />
                                 )}
                             />
                         </div>
+
+                        {accountsLoading && <p role="status" className="text-xs text-text-secondary">Loading bank accounts...</p>}
+                        {!accountsLoading && accounts.length === 0 && (
+                            <p className="text-xs text-text-secondary">
+                                Add a bank account before recording an expense.{" "}
+                                <Link href="/finance" className="font-medium text-primary underline">Manage Finances</Link>
+                            </p>
+                        )}
 
                         {/* Date */}
                         <Controller
@@ -263,9 +290,9 @@ export function AddExpenseDialog({
                             <textarea
                                 id="note"
                                 rows={3}
-                                placeholder="Add a note..."
+                                placeholder="e.g. milk, dosa and coffee"
                                 {...register("note")}
-                                className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-text-primary outline-none transition placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15"
+                                className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2.5 text-base text-text-primary outline-none transition placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm"
                             />
 
                             {errors.note && (
@@ -284,13 +311,13 @@ export function AddExpenseDialog({
                                 type="button"
                                 variant="outline"
                                 onClick={handleCancel}
-                                disabled={isSubmitting || mutation.isPendingState}
+                                disabled={isSubmitting || mutation.isPendingState || categorySaving}
                             >
                                 Cancel
                             </Button>
 
-                            <Button type="submit" disabled={isSubmitting || mutation.isPendingState}>
-                                {isSubmitting || mutation.isPendingState
+                            <Button type="submit" disabled={isSubmitting || mutation.isPendingState || categorySaving || accountsLoading || accounts.length === 0}>
+                                {isSubmitting || mutation.isPendingState || categorySaving
                                     ? "Saving..."
                                     : expense
                                         ? "Save changes"

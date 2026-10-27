@@ -17,22 +17,13 @@ import { notify } from "@/lib/notifications";
 
 import { FinanceRefreshNotice } from "@/features/finance/components/finance-refresh-notice";
 import { expenseToTransaction, transactionsToExpenses } from "@/features/finance/utils/expense-transactions";
+import { expenseCategoryLabels } from "@/features/finance/utils/expense-categories";
 import type { Expense } from "@/features/finance/types/expense";
 import type { ExpenseFormValues } from "@/features/finance/schemas/expense-schema";
 import { formatDateValue } from "@/lib/utils/date";
 import { DeleteModal, LoadError } from "@/components/ui";
 import Link from "next/link";
 import { financeActions, useFinance } from "@/features/finance/store/finance-store";
-
-const categories = [
-    "Food",
-    "Shopping",
-    "Transport",
-    "Bills",
-    "Health",
-    "Entertainment",
-    "Other",
-];
 
 export default function ExpensesPage() {
     const { userId } = useFinance();
@@ -44,6 +35,7 @@ function ExpensesPageContent() {
     const [error, setError] = useState("");
     const deletion = useFinanceMutation();
     const expenses = transactionsToExpenses(data.transactions);
+    const categories = expenseCategoryLabels(expenses.map((expense) => expense.category));
     const [date, setDate] = useState<Date | null>(null);
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
 

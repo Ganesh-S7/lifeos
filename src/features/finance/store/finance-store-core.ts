@@ -1,6 +1,8 @@
 import type { financeApi } from "../api/finance-api";
 import type { FinanceDataResponse } from "../types/finance-api";
 import type { FinanceTransaction } from "../types/finance";
+import { expenseCategoryRequestSchema, type ExpenseCategory } from "../schemas/expense-category-schema";
+import { categoryNameKey } from "../utils/expense-categories";
 import {
     bankAccountRequestSchema,
     investmentRequestSchema,
@@ -24,6 +26,10 @@ export interface FinanceState {
     loadError: string;
     refreshError: string;
     refreshing: boolean;
+    categories: ExpenseCategory[];
+    categoriesReady: boolean;
+    categoriesLoading: boolean;
+    categoriesError: string;
 }
 
 export const initialFinanceState: FinanceState = {
@@ -33,6 +39,10 @@ export const initialFinanceState: FinanceState = {
     loadError: "",
     refreshError: "",
     refreshing: false,
+    categories: [],
+    categoriesReady: false,
+    categoriesLoading: false,
+    categoriesError: "",
 };
 
 type TransactionInput = Omit<FinanceTransaction, "id" | "recordedAt"> & { id?: string };
@@ -43,6 +53,7 @@ export function createFinanceStore(api: typeof financeApi) {
     let generation = 0;
     let queue: Promise<unknown> = Promise.resolve();
     let loading: Promise<void> | undefined;
+    let categoriesLoading: Promise<void> | undefined;
     const listeners = new Set<() => void>();
 
     function publish(next: FinanceState) {
@@ -104,6 +115,7 @@ export function createFinanceStore(api: typeof financeApi) {
             generation += 1;
             queue = Promise.resolve();
             loading = undefined;
+            categoriesLoading = undefined;
             publish({ ...initialFinanceState, data: emptyFinanceData(), userId });
         }
         // A failed initial read stays failed until an explicit retry.
@@ -148,6 +160,44 @@ export function createFinanceStore(api: typeof financeApi) {
     }
 
     const actions = {
+        loadCategories(force = false): Promise<void> {
+            if (!state.userId || !state.ready || (state.categoriesReady && !force)) return Promise.resolve();
+            if (categoriesLoading) return categoriesLoading;
+            const request = enqueue(async (version) => {
+                publish({ ...state, categoriesLoading: true, categoriesError: "" });
+                try {
+                    const categories = await api.getCategories();
+                    assertSession(version);
+                    publish({ ...state, categories, categoriesReady: true, categoriesLoading: false });
+                } catch (cause) {
+                    if (version !== generation) return;
+                    publish({
+                        ...state,
+                        categoriesLoading: false,
+                        categoriesError: cause instanceof Error ? cause.message : "Unable to load expense categories.",
+                    });
+                }
+            }).catch(() => undefined);
+            categoriesLoading = request;
+            void request.finally(() => {
+                if (categoriesLoading === request) categoriesLoading = undefined;
+            });
+            return request;
+        },
+        async createCategory(name: string): Promise<ExpenseCategory> {
+            if (!state.ready || !state.userId) throw new Error("Finance data is not ready. Please try again.");
+            const body = expenseCategoryRequestSchema.parse({ name });
+            return enqueue(async (version) => {
+                const category = await api.createCategory(body);
+                assertSession(version);
+                publish({
+                    ...state,
+                    categories: [...state.categories.filter((item) =>
+                        categoryNameKey(item.name) !== categoryNameKey(category.name)), category],
+                });
+                return category;
+            });
+        },
         async saveAccount(input: { id?: string; name: string; balance: number }) {
             const { id, ...fields } = input;
             const body = bankAccountRequestSchema.parse(fields);
