@@ -3,8 +3,14 @@
 import Link from "next/link";
 import { Moon, Footprints, Flame, Dumbbell } from "lucide-react";
 import { Card, LoadError, Progress, Skeleton, SkeletonRegion } from "@/components/ui";
-import { getTodayHealthLog, getTodayHealthProgress } from "@/features/health/utils/health-calculations";
+import {
+    getRecentHealthLogs,
+    getTodayDateKey,
+    getTodayHealthLog,
+    getTodayHealthProgress,
+} from "@/features/health/utils/health-calculations";
 import { formatProgressValue } from "@/features/health/utils/health-formatters";
+import { formatDateDisplay } from "@/lib/utils/date";
 import { useDashboardHealth } from "../hooks/use-dashboard-health";
 
 const metrics = [
@@ -16,14 +22,26 @@ const metrics = [
 
 export function HealthOverview() {
     const { ready, failed, logs, targets, retry } = useDashboardHealth();
-    const todayLog = getTodayHealthLog(logs);
+    const today = getTodayDateKey();
+    const todayLog = getTodayHealthLog(logs, today);
     const progress = getTodayHealthProgress(todayLog, targets);
+    const history = getRecentHealthLogs(logs.filter((log) => log.date < today), logs.length);
+    const measurements = metrics.map((metric) => {
+        const record = typeof todayLog?.[metric.field] === "number"
+            ? todayLog
+            : history.find((log) => typeof log[metric.field] === "number");
+        return { ...metric, record, historical: Boolean(record && record.date !== today) };
+    });
+    const hasMeasurements = measurements.some((metric) => metric.record);
+    const hasHistorical = measurements.some((metric) => metric.historical);
 
     return (
         <Card className="border-0 bg-transparent shadow-none md:border md:bg-surface md:shadow-sm">
             <div className="flex items-start justify-between gap-3 md:border-b border-border-subtle py-2 md:p-5">
                 <div>
-                    <p className="text-sm font-semibold text-text-primary">Today</p>
+                    <p className="text-sm font-semibold text-text-primary">
+                        {hasHistorical ? "Latest recorded measurements" : "Today"}
+                    </p>
                     <p className="mt-1 text-xs text-text-secondary">Health &amp; activity</p>
                 </div>
                 <Link href="/health" className="text-xs font-medium text-primary hover:underline">
@@ -45,7 +63,7 @@ export function HealthOverview() {
                         ))}
                     </SkeletonRegion>
                 )
-            ) : !todayLog ? (
+            ) : !todayLog && !hasMeasurements ? (
                 <div className="space-y-1 border-l-2 border-border pl-3 py-2 md:space-y-2 md:border-l-0 md:p-5">
                     <p className="text-sm font-medium text-text-primary">No health measurements recorded today</p>
                     <p className="text-sm text-text-secondary">
@@ -57,9 +75,9 @@ export function HealthOverview() {
                 </div>
             ) : (
                 <div className="grid grid-cols-2 gap-3 md:gap-0 md:divide-x md:divide-border-subtle sm:grid-cols-4">
-                    {metrics.map((metric) => {
+                    {measurements.map((metric) => {
                         const Icon = metric.icon;
-                        const value = todayLog[metric.field];
+                        const value = metric.record?.[metric.field];
                         const target = progress.find((item) => item.key === metric.key);
 
                         return (
@@ -72,9 +90,21 @@ export function HealthOverview() {
                                     {value !== undefined ? formatProgressValue(value, metric.key) : "Not recorded"}
                                 </p>
                                 <p className="mt-1 text-[11px] text-text-muted">
-                                    {target ? `Target: ${formatProgressValue(target.target, metric.key)}` : "No target set"}
+                                    {metric.historical && metric.record ? (
+                                        <>
+                                            Last recorded{" "}
+                                            <time dateTime={metric.record.date}>
+                                                {formatDateDisplay(metric.record.date)}
+                                            </time>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {hasHistorical && value !== undefined && "Today · "}
+                                            {target ? `Target: ${formatProgressValue(target.target, metric.key)}` : "No target set"}
+                                        </>
+                                    )}
                                 </p>
-                                {target?.percentage !== null && target?.percentage !== undefined && (
+                                {!metric.historical && target?.percentage !== null && target?.percentage !== undefined && (
                                     <div role="group" aria-label={`${metric.label}: ${target.percentage}% of target`}>
                                         <Progress value={target.percentage} className="mt-3 h-1" />
                                     </div>

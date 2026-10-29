@@ -124,7 +124,11 @@ test("summary uses latest recorded weight/sleep and actual weight goal, with exp
     assert.match(html, /6h 30m/);
     assert.ok(html.includes(formatDateDisplay("2001-01-02")));
     assert.ok(html.includes(formatDateDisplay("2001-01-03")));
-    assert.match(render(HealthOverview), /No health measurements recorded today/);
+    const overview = render(HealthOverview);
+    assert.match(overview, /Latest recorded measurements/);
+    assert.match(overview, /42 steps/);
+    assert.match(overview, /6h 30m/);
+    assert.doesNotMatch(overview, /No health measurements recorded today/);
     noFabrication(html);
 });
 
@@ -148,6 +152,70 @@ test("missing fields/targets stay missing while recorded zeroes remain valid", (
     assert.equal((html.match(/Not recorded/g) ?? []).length, 2);
     assert.equal((html.match(/role="progressbar"/g) ?? []).length, 1);
     assert.match(html, /aria-valuenow="0"/);
+    assert.match(html, /No target set/);
+});
+
+test("historical-only metrics use independent latest dates with no daily progress", () => {
+    boundary.health.logs = [
+        log("2001-01-01", { caloriesKcal: 1000, proteinGrams: 40, steps: 1500, sleepMinutes: 420 }),
+        log("2001-01-04", { proteinGrams: 83 }),
+        log("2001-01-02", { caloriesKcal: 1750 }),
+        log("2001-01-05", { sleepMinutes: 390 }),
+        log("2001-01-03", { steps: 6500 }),
+    ];
+    const originalOrder = boundary.health.logs.map((entry) => entry.date);
+    boundary.health.targets = {
+        caloriesKcalPerDay: 2000, proteinGramsPerDay: 100,
+        stepsPerDay: 8000, sleepMinutesPerDay: 480, updatedAt: "test",
+    };
+    const html = render(HealthOverview);
+    assert.match(html, /Latest recorded measurements/);
+    for (const [value, date] of [
+        ["1,750 kcal", "2001-01-02"], ["83 g", "2001-01-04"],
+        ["6,500 steps", "2001-01-03"], ["6h 30m", "2001-01-05"],
+    ]) {
+        assert.ok(html.includes(value), value);
+        assert.ok(html.includes(`Last recorded <time dateTime="${date}">${formatDateDisplay(date)}</time>`));
+    }
+    assert.doesNotMatch(html, /progressbar|of target|Target:|No health measurements recorded today/);
+    assert.deepEqual(boundary.health.logs.map((entry) => entry.date), originalOrder);
+});
+
+test("today wins per metric, including zero; only today's values receive progress", () => {
+    boundary.health.logs = [
+        log("2001-01-02", { steps: 5555, caloriesKcal: 1850, proteinGrams: 91, sleepMinutes: 450 }),
+        log(today, { steps: 0, proteinGrams: 50 }),
+    ];
+    boundary.health.targets = {
+        caloriesKcalPerDay: 2000, proteinGramsPerDay: 100,
+        stepsPerDay: 8000, sleepMinutesPerDay: 480, updatedAt: "test",
+    };
+    const html = render(HealthOverview);
+    assert.match(html, /Latest recorded measurements/);
+    assert.match(html, /0 steps/);
+    assert.match(html, /50 g/);
+    assert.match(html, /1,850 kcal/);
+    assert.match(html, /7h 30m/);
+    assert.doesNotMatch(html, /5,555 steps|91 g|Calories: \d+%|Sleep: \d+%/);
+    assert.equal((html.match(/Last recorded/g) ?? []).length, 2);
+    assert.equal((html.match(/Today · Target:/g) ?? []).length, 2);
+    assert.equal((html.match(/role="progressbar"/g) ?? []).length, 2);
+    assert.match(html, /Protein: 50% of target/);
+    assert.match(html, /Steps: 0% of target/);
+});
+
+test("partial history retains unavailable metrics and excludes future dates from fallback", () => {
+    boundary.health.logs = [
+        log("2001-01-01", { steps: 0 }),
+        log("2999-01-01", { caloriesKcal: 9999, steps: 99999 }),
+    ];
+    boundary.health.targets = { stepsPerDay: 8000, caloriesKcalPerDay: 2000, updatedAt: "test" };
+    const html = render(HealthOverview);
+    assert.match(html, /0 steps/);
+    assert.equal((html.match(/Not recorded/g) ?? []).length, 3);
+    assert.equal((html.match(/Last recorded/g) ?? []).length, 1);
+    assert.doesNotMatch(html, /9,999|99,999|2999|progressbar/);
+    assert.match(html, /Target: 2,000 kcal/);
     assert.match(html, /No target set/);
 });
 
