@@ -14,6 +14,9 @@ interface ExpenseCategoryComboboxProps {
     onChange: (value: string) => void;
     onBusyChange: (busy: boolean) => void;
     error?: string;
+    /** Compact table presentation; the label remains available to screen readers. */
+    compact?: boolean;
+    label?: string;
 }
 
 /** Scroll only the list, never its dialog or document ancestors. */
@@ -33,6 +36,8 @@ export function ExpenseCategoryCombobox({
     onChange,
     onBusyChange,
     error,
+    compact = false,
+    label = "Category",
 }: ExpenseCategoryComboboxProps) {
     const { userId, ready, categories, categoriesReady, categoriesLoading, categoriesError } = useFinance();
     const id = useId();
@@ -136,8 +141,8 @@ export function ExpenseCategoryCombobox({
                     }
                 }}
             >
-                <label htmlFor={id} className="block text-xs font-medium text-text-primary">
-                    Category <span aria-hidden="true" className="text-danger">*</span>
+                <label htmlFor={id} className={compact ? "sr-only" : "block text-xs font-medium text-text-primary"}>
+                    {label} <span aria-hidden="true" className="text-danger">*</span>
                 </label>
                 <Popover.Anchor asChild>
                     <div ref={anchor} className="relative">
@@ -178,7 +183,7 @@ export function ExpenseCategoryCombobox({
                                     setOpen(false);
                                 }
                             }}
-                            className={cn("pr-9", error && "border-danger")}
+                            className={cn("pr-9", compact && "sm:h-9", error && "border-danger")}
                         />
                         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
                     </div>

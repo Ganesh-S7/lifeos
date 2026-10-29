@@ -28,7 +28,7 @@ registerHooks({
                 export function Skeleton(){return React.createElement('span',null,'Loading');}
                 export function SkeletonRegion({children,label}){return React.createElement('div',null,label,children);}
                 export function LoadError({message}){return React.createElement('div',{role:'alert'},message);}
-                ${["Dialog", "DialogContent", "DialogDescription", "DialogFooter", "DialogHeader", "DialogTitle"].map((name) => `export function ${name}({children}){return React.createElement('div',null,children);}`).join("\n")}`;
+                ${["Dialog", "DialogContent", "DialogDescription", "DialogFooter", "DialogHeader", "DialogTitle"].map((name) => `export function ${name}({children,className}){return React.createElement('div',{className},children);}`).join("\n")}`;
         } else if (specifier === "next/link") {
             source = "import React from 'react'; export default function Link({href,children}){return React.createElement('a',{href},children);}";
         }
@@ -182,7 +182,7 @@ test("charts and plan dialog reuse actual rows and saved targets; SSR loading co
     const dialog = render(SpendingPlanDialog, { plan: dataset.plan, onClose() {}, onSaved() {} });
     assert.match(dialog, /Manage spending plan/);
     assert.match(dialog, /₹33,403/);
-    assert.match(dialog, /Add category target/);
+    assert.match(dialog, /Add category/);
     assert.match(dialog, /Remove Rent target/);
     assert.match(dialog, /value="7000"/);
     const page = render(MonthlyBreakdown);
@@ -193,6 +193,46 @@ test("charts and plan dialog reuse actual rows and saved targets; SSR loading co
     assert.match(render(MonthlyBreakdown), /Unable to load your finance records/);
     assert.doesNotMatch(render(MonthlyBreakdown), /private database details/);
     boundary.finance.ready = true;
+});
+
+test("compact plan editor labels columns once and keeps the summary outside the scrollable table", () => {
+    const html = render(SpendingPlanDialog, { plan: data().plan, onClose() {}, onSaved() {} });
+    assert.match(html, /max-w-200/);
+    assert.match(html, /flex-col overflow-hidden p-0/);
+    assert.match(html, /15 categories/);
+    assert.equal((html.match(/scope="col"/g) ?? []).length, 3);
+    assert.match(html, /sticky top-0 z-10 bg-surface/);
+    assert.match(html, /overflow-y-auto overscroll-contain/);
+    assert.equal((html.match(/role="combobox"/g) ?? []).length, 15);
+    assert.equal((html.match(/aria-label="Remove [^"]+ target"/g) ?? []).length, 15);
+    assert.match(html, /class="sr-only">Category for target 1/);
+    assert.match(html, /aria-label="Monthly target for Rent in rupees"/);
+    assert.match(html, /text-right tabular-nums/);
+    assert.ok(html.indexOf("</table>") < html.indexOf("Planned monthly spending"));
+    assert.ok(html.indexOf("</table>") < html.indexOf("Save plan"));
+    assert.match(html, /Salary reference: ₹34,800/);
+    assert.match(html, /Planned buffer: ₹1,397/);
+    assert.doesNotMatch(html, /bg-white|text-black|#[0-9a-f]{6}/i);
+});
+
+test("plan summary derives totals and buffer from provided targets, including paise and overspending", () => {
+    const props = { onClose() {}, onSaved() {} };
+    const plan = { ...data().plan, targets: [{ name: "A long category name", amount: 34801.25 }] };
+    const html = render(SpendingPlanDialog, { ...props, plan });
+    assert.match(html, /1 category/);
+    assert.match(html, /₹34,801.25/);
+    assert.match(html, /text-danger">Planned buffer: -₹1.25/);
+    assert.match(html, /value="A long category name"/);
+    assert.match(html, /value="34801.25"/);
+    const withoutIncome = render(SpendingPlanDialog, { ...props, plan: { ...plan, referenceIncome: null } });
+    assert.doesNotMatch(withoutIncome, /Salary reference|Planned buffer/);
+    const zeroIncome = render(SpendingPlanDialog, { ...props, plan: { ...plan, referenceIncome: 0 } });
+    assert.match(zeroIncome, /Salary reference: ₹0/);
+    const empty = render(SpendingPlanDialog, { ...props, plan: null });
+    assert.match(empty, /0 categories/);
+    assert.match(empty, /No category targets yet/);
+    assert.match(empty, /₹0/);
+    assert.doesNotMatch(empty, /₹33,403|₹34,800|role="combobox"/);
 });
 
 test("typed client loads persisted records, sends plan-only writes and never falls back on failures", async (t) => {
