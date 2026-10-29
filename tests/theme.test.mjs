@@ -112,6 +112,7 @@ beforeEach(() => {
     storageHandlers = new Set();
     globalThis.document = fakeDocument();
     globalThis.window = {
+        matchMedia: () => ({ matches: false }),
         localStorage: {
             getItem: (key) => storage.get(key) ?? null,
             setItem: (key, value) => storage.set(key, value),
@@ -151,9 +152,9 @@ test("initialization defaults to light and restores only explicit saved light/da
 test("toggle has an accessible pressed state and changes/persists both theme choices", () => {
     for (const expected of ["dark", "light"]) {
         const button = ThemeToggle();
-        assert.equal(button.props["aria-label"], "Dark mode");
+        assert.equal(button.props["aria-label"], getTheme() === "dark" ? "Switch to light mode" : "Switch to dark mode");
         assert.equal(button.props["aria-pressed"], getTheme() === "dark");
-        button.props.onClick();
+        button.props.onClick({ currentTarget: { querySelector() { return null; } } });
         assert.equal(getTheme(), expected);
         assert.equal(storage.get(THEME_STORAGE_KEY), expected);
         const html = renderToStaticMarkup(React.createElement(ThemeToggle));
@@ -164,6 +165,30 @@ test("toggle has an accessible pressed state and changes/persists both theme cho
         assert.equal(nextDocument.documentElement.classList.contains("dark"), expected === "dark");
         assert.match(renderToStaticMarkup(React.createElement(Toaster)), new RegExp(`data-theme="${expected}"`));
     }
+});
+
+test("toggle shows the current theme icon and animates only explicit clicks with motion allowed", () => {
+    const animations = [];
+    const event = { currentTarget: { querySelector() { return { animate: (...args) => animations.push(args) }; } } };
+    for (const theme of ["light", "dark"]) {
+        setTheme(theme);
+        const html = renderToStaticMarkup(React.createElement(ThemeToggle));
+        assert.match(html, new RegExp(`lucide-${theme === "dark" ? "moon" : "sun"}`));
+        assert.doesNotMatch(html, /animate-|transition-transform/);
+    }
+    assert.equal(animations.length, 0, "Restoration and initial rendering do not animate");
+    ThemeToggle().props.onClick(event);
+    assert.equal(animations.length, 1);
+    assert.match(animations[0][0][0].transform, /rotate.*scale/);
+    assert.equal(animations[0][1].duration, 220);
+    window.matchMedia = (query) => {
+        assert.equal(query, "(prefers-reduced-motion: reduce)");
+        return { matches: true };
+    };
+    const previousTheme = getTheme();
+    ThemeToggle().props.onClick(event);
+    assert.notEqual(getTheme(), previousTheme);
+    assert.equal(animations.length, 1, "Reduced motion changes the theme without animation");
 });
 
 test("subscriptions notify all consumers, sync other tabs and clean up listeners", () => {

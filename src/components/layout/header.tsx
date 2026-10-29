@@ -4,9 +4,17 @@ import { LogOut, Menu } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Breadcrumbs } from "./breadcrumbs";
-import { IconButton, Skeleton } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  IconButton,
+  Skeleton,
+} from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function Header() {
@@ -16,6 +24,7 @@ export function Header() {
 
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
+  const signOutPending = useRef(false);
 
   const userName =
     session?.user.name?.trim() || "Personal account";
@@ -31,10 +40,11 @@ export function Header() {
       .toUpperCase() || "U";
 
   async function handleSignOut() {
-    if (isSigningOut) {
+    if (signOutPending.current) {
       return;
     }
 
+    signOutPending.current = true;
     setIsSigningOut(true);
     setSignOutError("");
 
@@ -55,6 +65,7 @@ export function Header() {
         "Something went wrong while signing out.",
       );
     } finally {
+      signOutPending.current = false;
       setIsSigningOut(false);
     }
   }
@@ -82,54 +93,76 @@ export function Header() {
           <ThemeToggle />
 
           {/* Authenticated user */}
-          <div className="ml-1 flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5">
-            {initialSessionLoading ? (
-              <>
-                <Skeleton variant="circle" className="size-8 shrink-0" />
-                <span className="sr-only">Loading account</span>
-              </>
-            ) : (
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-                {initials}
-              </span>
-            )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Account menu for ${userName}`}
+                disabled={isSigningOut || isPending || !session}
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md p-1 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-50 sm:min-h-9 sm:min-w-9"
+              >
+                {initialSessionLoading ? (
+                  <>
+                    <Skeleton variant="circle" className="size-8 shrink-0" />
+                    <span className="sr-only">Loading account</span>
+                  </>
+                ) : (
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                    {initials}
+                  </span>
+                )}
 
-            <div className="hidden min-w-0 text-left xl:block">
-              {initialSessionLoading ? (
-                <Skeleton variant="text" className="w-24" />
-              ) : (
-                <p className="max-w-36 truncate text-[11px] font-medium text-text-primary">
-                  {userName}
-                </p>
-              )}
+                <div className="hidden min-w-0 text-left xl:block">
+                  {initialSessionLoading ? (
+                    <Skeleton variant="text" className="w-24" />
+                  ) : (
+                    <p className="max-w-36 truncate text-[11px] font-medium text-text-primary">
+                      {userName}
+                    </p>
+                  )}
 
-              <p className="max-w-36 truncate text-[10px] text-text-muted">
-                Personal account
-              </p>
-            </div>
-          </div>
-
-          {/* Sign out */}
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={isSigningOut || isPending || !session}
-            aria-label="Sign out"
-            title="Sign out"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 sm:size-9"
-          >
-            {isSigningOut ? (
-              <span
-                className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-                aria-hidden="true"
-              />
-            ) : (
-              <LogOut
-                className="size-4"
-                aria-hidden="true"
-              />
-            )}
-          </button>
+                  <p className="max-w-36 truncate text-[10px] text-text-muted">
+                    Personal account
+                  </p>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              collisionPadding={12}
+              aria-label="Account"
+              className="w-64 max-w-[calc(100vw-1.5rem)] max-h-(--radix-dropdown-menu-content-available-height) overflow-y-auto shadow-sm"
+            >
+              <div className="flex items-start gap-2.5 px-2.5 py-3">
+                <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                  {initials}
+                </span>
+                <div className="min-w-0">
+                  <p className="break-words text-xs font-medium text-text-primary">{userName}</p>
+                  {session?.user.email && (
+                    <p className="mt-0.5 break-words text-[11px] text-text-secondary">{session.user.email}</p>
+                  )}
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={isSigningOut || isPending || !session}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  void handleSignOut();
+                }}
+                className="text-danger data-highlighted:bg-danger/10"
+              >
+                {isSigningOut ? (
+                  <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" aria-hidden="true" />
+                ) : (
+                  <LogOut className="size-4" aria-hidden="true" />
+                )}
+                {isSigningOut ? "Logging out..." : "Log out"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       {signOutError && (

@@ -11,16 +11,25 @@ export function ThemeToggle() {
 
     return (
         <IconButton
-            aria-label="Dark mode"
+            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
             aria-pressed={dark}
             title={dark ? "Switch to light mode" : "Switch to dark mode"}
-            onClick={() => setTheme(dark ? "light" : "dark")}
+            onClick={(event) => {
+                setTheme(dark ? "light" : "dark");
+                if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                    event.currentTarget.querySelector<HTMLElement>("[data-theme-icon]")?.animate?.(
+                        [
+                            { transform: "rotate(-35deg) scale(0.75)" },
+                            { transform: "rotate(0deg) scale(1)" },
+                        ],
+                        { duration: 220, easing: "ease-out" },
+                    );
+                }
+            }}
         >
-            {dark ? (
-                <Sun className="size-4.25" aria-hidden="true" />
-            ) : (
-                <Moon className="size-4.25" aria-hidden="true" />
-            )}
+            <span data-theme-icon className="inline-flex size-4.25" aria-hidden="true">
+                {dark ? <Moon className="size-full" /> : <Sun className="size-full" />}
+            </span>
         </IconButton>
     );
 }

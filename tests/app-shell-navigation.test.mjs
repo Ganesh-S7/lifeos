@@ -36,6 +36,7 @@ const stubs = {
     "@/components/ui": `
         export { IconButton } from ${JSON.stringify(new URL("components/ui/icon-button.tsx", root).href)};
         export { Skeleton } from ${JSON.stringify(new URL("components/ui/skeleton.tsx", root).href)};
+        export * from ${JSON.stringify(new URL("components/ui/dropdown-menu/dropdown-menu.tsx", root).href)};
     `,
 };
 registerHooks({
@@ -141,7 +142,10 @@ test("shared shell removes inactive search, notifications and workspace dropdown
     state.pathname = "/finance/expenses";
     const html = render(AppShell, { children: React.createElement("p", null, "Page content") });
     assert.doesNotMatch(html, /Search anything|aria-label="Search"|Notifications|Personal workspace|Loading workspace|User&#x27;s Life|User&apos;s Life/);
-    assert.match(html, /aria-label="Sign out"/);
+    assert.match(html, /aria-label="Account menu for Test User"/);
+    assert.match(html, /aria-haspopup="menu"/);
+    assert.match(html, /aria-expanded="false"/);
+    assert.doesNotMatch(html, /aria-label="Sign out"/);
     assert.match(html, /aria-label="Open navigation"/);
     assert.match(html, /Test User/);
     assert.match(html, /user@example.invalid/);
