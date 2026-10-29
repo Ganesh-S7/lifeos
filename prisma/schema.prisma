@@ -166,14 +166,15 @@ model FinanceTransaction {
   recordedAt           DateTime               @default(now())
   category             String?
   categoryId           String?
-  accountId            String
+  accountId            String?
+  isUntracked          Boolean                @default(false)
   destinationAccountId String?
   investmentId         String?
   note                 String?                @db.Text
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  account BankAccount @relation("TransactionSourceAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  account BankAccount? @relation("TransactionSourceAccount", fields: [accountId], references: [id], onDelete: Restrict)
 
   destinationAccount BankAccount? @relation("TransactionDestinationAccount", fields: [destinationAccountId], references: [id], onDelete: Restrict)
 

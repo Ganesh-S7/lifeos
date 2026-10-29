@@ -43,6 +43,8 @@ export interface FinanceTransaction {
     recordedAt: string;
     category?: string;
     accountId?: string;
+    /** Explicit reporting-only expense; never applied to any account ledger. */
+    isUntracked?: boolean;
     destinationAccountId?: string;
     investmentId?: string;
     note?: string;

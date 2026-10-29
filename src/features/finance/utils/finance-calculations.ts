@@ -7,6 +7,7 @@ import type {
 
 export function accountBalance(account: BankAccount, transactions: FinanceTransaction[]) {
     return transactions.reduce((balance, transaction) => {
+        if (transaction.type === "expense" && transaction.isUntracked) return balance;
         if (transaction.recordedAt <= account.balanceSnapshotAt) return balance;
         const amount = transaction.amount;
         if (transaction.type === "transfer") {

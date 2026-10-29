@@ -17,6 +17,7 @@ import { notify } from "@/lib/notifications";
 
 import { FinanceRefreshNotice } from "@/features/finance/components/finance-refresh-notice";
 import { expenseToTransaction, transactionsToExpenses } from "@/features/finance/utils/expense-transactions";
+import { expenseAccountName, UNTRACKED_EXPENSE_ACCOUNT } from "@/features/finance/utils/expense-account";
 import { expenseCategoryLabels } from "@/features/finance/utils/expense-categories";
 import type { Expense } from "@/features/finance/types/expense";
 import type { ExpenseFormValues } from "@/features/finance/schemas/expense-schema";
@@ -74,7 +75,7 @@ function ExpensesPageContent() {
 
     const handleEditExpense = (expense: Expense) => {
         const original = data.transactions.find((transaction) => transaction.id === expense.id);
-        setEditingExpense({ ...expense, account: original?.accountId || "" });
+        setEditingExpense({ ...expense, account: original?.isUntracked ? UNTRACKED_EXPENSE_ACCOUNT : original?.accountId || "" });
         setAddExpenseOpen(true);
     };
 
@@ -117,7 +118,7 @@ function ExpensesPageContent() {
                 return [
                     expense.merchant,
                     expense.category,
-                    data.accounts.find((account) => account.id === expense.account)?.name || "",
+                    expenseAccountName(expense.account, data.accounts),
                     expense.note ?? "",
                 ].some((value) =>
                     value.toLowerCase().includes(normalizedSearch),
@@ -210,8 +211,7 @@ function ExpensesPageContent() {
                     <ExpensesTable
                         expenses={filteredExpenses.map((expense) => ({
                             ...expense,
-                            account: data.accounts.find((account) => account.id === expense.account)?.name ||
-                                "Account unavailable",
+                            account: expenseAccountName(expense.account, data.accounts),
                         }))}
                         onEdit={handleEditExpense}
                         onDelete={setExpenseToDelete}

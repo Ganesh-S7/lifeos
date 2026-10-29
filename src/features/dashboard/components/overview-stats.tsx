@@ -57,7 +57,7 @@ export function OverviewStats() {
                             className="min-w-0"
                             labelInfo={
                                 <InfoTooltip label="About net cash flow">
-                                    Income minus ordinary expenses through today, excluding transfers and investment trades.
+                                    Income minus ordinary expenses through today, including Untracked expenses and excluding transfers and investment trades. This measures reported activity, not account movements.
                                     The comparison uses the same elapsed days of the previous month, capped at that month&apos;s end.
                                 </InfoTooltip>
                             }

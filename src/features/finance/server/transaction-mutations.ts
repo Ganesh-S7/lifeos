@@ -64,6 +64,10 @@ export async function mutateTransaction(
             throw new TransactionMutationError("INVALID_ACCOUNT", 400,
                 "Choose different source and destination bank accounts.");
         }
+        if (existing && ((!existing.accountId && !(existing.type === "expense" && existing.isUntracked)) ||
+            (existing.isUntracked && (existing.type !== "expense" || existing.accountId)))) {
+            throw new TransactionMutationError("INVALID_ACCOUNT", 400, "Invalid transaction account association.");
+        }
         const accountIds = new Set([
             ...(existing ? [existing.accountId] : []),
             ...(existing?.type === "transfer" && existing.destinationAccountId
@@ -71,7 +75,7 @@ export async function mutateTransaction(
             ...(mutation.kind !== "delete" ? [mutation.input.accountId] : []),
             ...(mutation.kind !== "delete" && mutation.input.type === "transfer"
                 ? [mutation.input.destinationAccountId] : []),
-        ]);
+        ].filter((id): id is string => Boolean(id)));
         for (const id of accountIds) {
             const account = await transaction.bankAccount.findFirst({ where: { id, userId } });
             if (!account) {
@@ -114,7 +118,8 @@ export async function mutateTransaction(
                 amount: mutation.input.amount.toString(),
                 description: mutation.input.description,
                 date: financeDateToDatabase(mutation.input.date),
-                accountId: mutation.input.accountId,
+                accountId: mutation.input.accountId ?? null,
+                isUntracked: mutation.input.type === "expense" && Boolean(mutation.input.isUntracked),
                 category: category
                     ? (existing && existing.category === categoryName ? existing.category : category.name)
                     : ("category" in mutation.input ? mutation.input.category ?? null : null),

@@ -248,6 +248,7 @@ export function createFinanceStore(api: typeof financeApi) {
                 ...fields,
                 ...(input.type === "income" || input.type === "expense"
                     ? { category: input.category } : {}),
+                ...(input.type === "expense" ? { isUntracked: input.isUntracked } : {}),
                 ...(input.type === "transfer"
                     ? { destinationAccountId: input.destinationAccountId } : {}),
                 ...(input.type === "investment_purchase" || input.type === "investment_sale"

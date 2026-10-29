@@ -274,13 +274,15 @@ test("unready data disables the relevant actions; failures offer retry without r
 test("missing accounts explain the prerequisite and link to Finance instead of opening an invalid form", () => {
     boundary.finance = { getSnapshot: () => ({ userId: "user", ready: true, data: emptyFinanceData() }) };
     const Component = content();
-    for (const label of ["Add Income", "Add Expense"]) {
+    for (const label of ["Add Income"]) {
         const tree = select(Component, label);
         assert.equal(find(tree, "Dialog").props.open, true);
         assert.match(text(tree), /Add a bank account first/);
         assert.ok(nodes(tree).some((node) => node.props.href === "/finance"));
         assert.equal(nodes(tree).some((node) => node.type === FinanceManager || node.type === AddExpenseDialog), false);
     }
+    const tree = select(Component, "Add Expense");
+    assert.ok(nodes(tree).some((node) => node.type === AddExpenseDialog && node.props.open));
 });
 
 test("income and expense save through the real shared store, update Overview and survive a reload", async (t) => {

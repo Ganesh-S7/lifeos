@@ -83,7 +83,8 @@ export function toFinanceTransactionDto(row: DatabaseTransaction): FinanceTransa
         amount: moneyToNumber(row.amount),
         description: row.description,
         date: financeDateFromDatabase(row.date),
-        accountId: row.accountId,
+        accountId: row.accountId ?? undefined,
+        ...(row.isUntracked ? { isUntracked: row.isUntracked } : {}),
         ...(row.category !== null ? { category: row.category } : {}),
         ...(row.destinationAccountId !== null
             ? { destinationAccountId: row.destinationAccountId }

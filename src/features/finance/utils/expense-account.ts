@@ -1,3 +1,12 @@
+/** Form-only sentinel; persisted as isUntracked=true with no account reference. */
+export const UNTRACKED_EXPENSE_ACCOUNT = "__untracked__";
+
+export function expenseAccountName(account: string, accounts: { id: string; name: string }[]) {
+    return account === UNTRACKED_EXPENSE_ACCOUNT
+        ? "Untracked"
+        : accounts.find((item) => item.id === account)?.name || "Account unavailable";
+}
+
 export interface ExpenseAccountOption {
     label: string;
     value: string;

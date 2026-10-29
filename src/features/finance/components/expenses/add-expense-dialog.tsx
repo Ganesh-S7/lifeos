@@ -26,7 +26,7 @@ import { parseDateValue } from "@/lib/utils/date";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ExpenseCategoryCombobox } from "./expense-category-combobox";
-import { pendingExpenseAccount } from "../../utils/expense-account";
+import { pendingExpenseAccount, UNTRACKED_EXPENSE_ACCOUNT } from "../../utils/expense-account";
 import { useFinanceMutation } from "../../hooks/use-finance-mutation";
 import type { FinanceMutationCallback } from "../../utils/finance-mutation";
 
@@ -82,7 +82,8 @@ export function AddExpenseDialog({
 
     const handleFormSubmit = async (data: ExpenseFormValues) => {
         setSubmissionError("");
-        if (categoryBusy.current || accountsLoading || !accounts.some((account) => account.value === data.account)) {
+        if (categoryBusy.current || accountsLoading ||
+            (data.account !== UNTRACKED_EXPENSE_ACCOUNT && !accounts.some((account) => account.value === data.account))) {
             setSubmissionError("Select an available bank account before saving this expense.");
             return;
         }
@@ -236,17 +237,24 @@ export function AddExpenseDialog({
                                 name="account"
                                 control={control}
                                 render={({ field, fieldState }) => (
-                                    <Select
-                                        id="account"
-                                        label="Account"
-                                        options={accounts}
-                                        value={field.value}
-                                        onChange={(value) => field.onChange(value ?? "")}
-                                        placeholder={accountsLoading ? "Loading accounts..." : "Select account"}
-                                        disabled={accountsLoading || accounts.length === 0}
-                                        required
-                                        error={fieldState.error?.message}
-                                    />
+                                    <div className="space-y-1.5">
+                                        <Select
+                                            id="account"
+                                            label="Account"
+                                            options={[...accounts, { label: "Untracked", value: UNTRACKED_EXPENSE_ACCOUNT }]}
+                                            value={field.value}
+                                            onChange={(value) => field.onChange(value ?? "")}
+                                            placeholder={accountsLoading ? "Loading accounts..." : "Select account"}
+                                            disabled={accountsLoading}
+                                            required
+                                            error={fieldState.error?.message}
+                                        />
+                                        {field.value === UNTRACKED_EXPENSE_ACCOUNT && (
+                                            <p id="untracked-expense-help" className="text-xs text-text-secondary">
+                                                Records this expense for reporting without changing any account balance.
+                                            </p>
+                                        )}
+                                    </div>
                                 )}
                             />
                         </div>
@@ -254,7 +262,7 @@ export function AddExpenseDialog({
                         {accountsLoading && <p role="status" className="text-xs text-text-secondary">Loading bank accounts...</p>}
                         {!accountsLoading && accounts.length === 0 && (
                             <p className="text-xs text-text-secondary">
-                                Add a bank account before recording an expense.{" "}
+                                Choose Untracked, or add a bank account to track payments.{" "}
                                 <Link href="/finance" className="font-medium text-primary underline">Manage Finances</Link>
                             </p>
                         )}
@@ -316,7 +324,7 @@ export function AddExpenseDialog({
                                 Cancel
                             </Button>
 
-                            <Button type="submit" disabled={isSubmitting || mutation.isPendingState || categorySaving || accountsLoading || accounts.length === 0}>
+                            <Button type="submit" disabled={isSubmitting || mutation.isPendingState || categorySaving || accountsLoading}>
                                 {isSubmitting || mutation.isPendingState || categorySaving
                                     ? "Saving..."
                                     : expense

@@ -270,7 +270,7 @@ function FinanceOverviewContent() {
                         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <div>
                                 <h2 id="monthly-title" className="text-base font-semibold text-text-primary">Monthly overview</h2>
-                                <p className="text-xs text-text-secondary">Income and ordinary spending through today</p>
+                                <p className="text-xs text-text-secondary">Income and ordinary spending through today. Net cash flow and savings rate include Untracked expenses; they measure reported activity, not account movements.</p>
                             </div>
                             <Button
                                 size="sm"
@@ -326,7 +326,7 @@ function FinanceOverviewContent() {
                                 <div key={item.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-3 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
                                     <div className="min-w-0 max-w-full break-words">
                                         <p className="text-sm font-medium text-text-primary">{item.description}</p>
-                                        <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")} · {formatDateDisplay(item.date)}</p>
+                                        <p className="text-xs capitalize text-text-secondary">{item.type.replaceAll("_", " ")}{item.isUntracked ? " · Untracked" : ""} · {formatDateDisplay(item.date)}</p>
                                     </div>
                                     <div className="grid max-w-40 grid-cols-2 items-center gap-x-2 gap-y-1 sm:flex sm:max-w-full sm:flex-wrap sm:gap-3">
                                         <span className="col-span-2 break-words text-right text-sm font-semibold tabular-nums text-text-primary">

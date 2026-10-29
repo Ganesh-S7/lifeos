@@ -144,12 +144,34 @@ test("new form has no arbitrary category; late accounts fill only an untouched a
     assert.equal(form.values.note, "Dosa");
 });
 
-test("empty account form explains next step, prevents saving and clarifies Merchant and Note", () => {
+test("empty account form permits Untracked selection and clarifies Merchant and Note", () => {
     const tree = render(AddExpenseDialog, { open: true, accounts: [], onOpenChange() {}, async onSubmit() {} });
-    assert.ok(find(tree, (node) => node.props.type === "submit").props.disabled);
+    assert.equal(find(tree, (node) => node.props.type === "submit").props.disabled, false);
     assert.ok(find(tree, (node) => node.props.href === "/finance"));
     assert.equal(find(tree, (node) => node.props.id === "merchant").props["aria-describedby"], "merchant-help");
     assert.equal(find(tree, (node) => node.props.id === "note").props.placeholder, "e.g. milk, dosa and coffee");
+});
+
+test("Untracked remains selected across account refreshes and edits, and saves without accounts", async () => {
+    const { UNTRACKED_EXPENSE_ACCOUNT } = await import("../src/features/finance/utils/expense-account.ts");
+    let saved;
+    const props = { open: true, accounts: [], onOpenChange() {}, async onSubmit(value) { saved = value; return true; } };
+    render(AddExpenseDialog, props);
+    const form = frames.get(AddExpenseDialog).form;
+    Object.assign(form.values, { amount: 800, merchant: "Gym", category: "Health", account: UNTRACKED_EXPENSE_ACCOUNT, note: "Allocation" });
+    form.dirty.account = true;
+    let tree = render(AddExpenseDialog, { ...props, accounts: [{ label: "Bank", value: "bank" }] });
+    assert.equal(form.values.account, UNTRACKED_EXPENSE_ACCOUNT);
+    const controller = find(tree, (node) => node.props.name === "account" && node.props.render);
+    const account = controller.props.render({ field: { value: UNTRACKED_EXPENSE_ACCOUNT, onChange() {} }, fieldState: {} });
+    assert.ok(find(account, (node) => node.props.options).props.options.some((option) => option.label === "Untracked"));
+    assert.ok(find(account, (node) => node.props.id === "untracked-expense-help"));
+    await find(tree, (node) => node.type === "form").props.onSubmit({});
+    assert.equal(saved.account, UNTRACKED_EXPENSE_ACCOUNT);
+    const expense = { id: "untracked", amount: 800, merchant: "Gym", category: "Health", account: UNTRACKED_EXPENSE_ACCOUNT, date: "2026-10-01", note: "Allocation" };
+    tree = render(AddExpenseDialog, { ...props, expense });
+    assert.equal(form.values.account, UNTRACKED_EXPENSE_ACCOUNT);
+    assert.equal(form.values.note, "Allocation");
 });
 
 test("search selects existing categories and equivalent names do not offer creation", () => {

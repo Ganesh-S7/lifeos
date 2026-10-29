@@ -75,6 +75,8 @@ const expenseRequestSchema = z.strictObject({
     ...transactionFields,
     type: z.literal("expense"),
     category: nameSchema,
+    isUntracked: z.boolean().optional(),
+    accountId: referenceSchema.nullish().transform((value) => value ?? undefined),
 });
 
 const transferRequestSchema = z.strictObject({
@@ -103,6 +105,16 @@ export const financeTransactionRequestSchema = z.discriminatedUnion("type", [
     investmentPurchaseRequestSchema,
     investmentSaleRequestSchema,
 ]).superRefine((transaction, context) => {
+    if (transaction.type === "expense" &&
+        (transaction.isUntracked ? Boolean(transaction.accountId) : !transaction.accountId)) {
+        context.addIssue({
+            code: "custom",
+            path: ["accountId"],
+            message: transaction.isUntracked
+                ? "Untracked expenses cannot have a bank account."
+                : "Select a registered bank account or choose Untracked.",
+        });
+    }
     if (transaction.type === "transfer" &&
         transaction.accountId === transaction.destinationAccountId) {
         context.addIssue({

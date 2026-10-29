@@ -27,10 +27,10 @@ export type BankAccountDto = BankAccount;
 export type InvestmentDto = Investment;
 export type LiabilityDto = Liability;
 
-/** Every database transaction has an account and type-specific relationships. */
+/** Only explicitly Untracked expenses may omit their source account. */
 export type FinanceTransactionDto = Omit<
     FinanceTransaction,
-    "accountId" | "destinationAccountId" | "investmentId" | "category" | "type"
+    "accountId" | "destinationAccountId" | "investmentId" | "category" | "type" | "isUntracked"
 > & FinanceTransactionRequest;
 
 export interface FinancialPositionSnapshotDto extends FinancialPositionSnapshot {

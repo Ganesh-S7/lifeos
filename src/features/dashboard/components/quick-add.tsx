@@ -39,8 +39,7 @@ function QuickAddContent() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [action, setAction] = useState<QuickAddAction | null>(null);
     const [expenseError, setExpenseError] = useState("");
-    const financeAction = action === "income" || action === "expense";
-    const needsAccount = finance.ready && financeAction && finance.data.accounts.length === 0;
+    const needsAccount = finance.ready && action === "income" && finance.data.accounts.length === 0;
 
     function select(next: QuickAddAction) {
         setMenuOpen(false);
@@ -133,7 +132,7 @@ function QuickAddContent() {
                     <DialogHeader>
                         <DialogTitle>Add a bank account first</DialogTitle>
                         <DialogDescription>
-                            Income and expenses need a registered bank account. Create one in Finance, then return to Quick add.
+                            Income needs a registered bank account. Create one in Finance, then return to Quick add.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="mt-5 flex justify-end">

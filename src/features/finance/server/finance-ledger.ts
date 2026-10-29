@@ -57,6 +57,7 @@ export function applyLedgerTransaction(
     transaction: FinanceTransaction,
 ) {
     const changes = new Map<LedgerBalance, bigint>();
+    if (transaction.type === "expense" && transaction.isUntracked) return changes;
     const amount = minorUnits(transaction.amount);
     const recordedAt = transaction.recordedAt.getTime();
     function change(entry: LedgerBalance | undefined, delta: bigint) {
@@ -66,7 +67,7 @@ export function applyLedgerTransaction(
     }
 
     change(
-        balances.accounts.get(transaction.accountId),
+        transaction.accountId ? balances.accounts.get(transaction.accountId) : undefined,
         transaction.type === "income" || transaction.type === "investment_sale" ? amount : -amount,
     );
     if (transaction.type === "transfer" && transaction.destinationAccountId) {

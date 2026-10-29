@@ -36,6 +36,111 @@ const { accountBalance, investmentValue } = await import("../src/features/financ
 const income = { type: "income", amount: 50.25, description: "Salary", date: "2026-10-01", accountId: "bank" };
 const expense = { ...income, type: "expense", description: "Groceries", category: "Food" };
 
+test("Untracked CRUD persists its mode and never changes account balances or position history", async () => {
+    const db = setup();
+    const untracked = { ...expense, accountId: undefined, isUntracked: true, amount: 800 };
+    const created = await request("POST", untracked);
+    assert.equal(created.status, 201);
+    const id = created.body.transaction.id;
+    assert.equal(created.body.transaction.isUntracked, true);
+    assert.equal(created.body.transaction.accountId, undefined);
+    assert.equal(db.records.transactions[0].accountId, null);
+    assert.equal(db.records.transactions[0].isUntracked, true);
+    const originalTimestamp = created.body.transaction.recordedAt;
+    const reloaded = toFinanceDataResponse(db.records);
+    assert.equal(reloaded.transactions[0].isUntracked, true);
+    assert.equal(accountBalance(reloaded.accounts[0], reloaded.transactions), 100);
+    for (const update of [
+        { ...untracked, amount: 1200 },
+        { ...untracked, category: "Health", description: "Gym", note: "Allocation", date: "2026-10-02" },
+    ]) {
+        const edited = await request("PUT", update, id);
+        assert.equal(edited.status, 200);
+        assert.equal(edited.body.transaction.recordedAt, originalTimestamp);
+        assert.equal(db.records.positionHistory.at(-1).bank.toString(), "100");
+    }
+    assert.equal((await request("DELETE", undefined, id)).status, 200);
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "100");
+});
+
+test("switching tracking modes recalculates both old and new account effects atomically", async () => {
+    const db = setup();
+    const created = await request("POST", { ...expense, amount: 20 });
+    assert.equal(created.status, 201);
+    const id = created.body.transaction.id;
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "80");
+    assert.equal((await request("PUT", { ...expense, accountId: null, isUntracked: true, amount: 800 }, id)).status, 200);
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "100");
+    const historyCount = db.records.positionHistory.length;
+    assert.equal((await request("PUT", { ...expense, amount: 101 }, id)).status, 409);
+    assert.equal(db.records.transactions[0].isUntracked, true);
+    assert.equal(db.records.positionHistory.length, historyCount, "Failed mode changes roll back completely");
+    assert.equal((await request("PUT", { ...expense, amount: 30 }, id)).status, 200);
+    assert.equal(db.records.transactions[0].isUntracked, false);
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "70");
+    assert.equal((await request("DELETE", undefined, id)).status, 200);
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "100");
+});
+
+test("Untracked expenses need no account but cannot smuggle associations or change other transaction types", async () => {
+    const data = records();
+    data.accounts = [];
+    const db = setup(data);
+    assert.equal((await request("POST", { ...expense, accountId: undefined, isUntracked: true })).status, 201);
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "0");
+    for (const input of [
+        { ...expense, accountId: undefined },
+        { ...expense, accountId: undefined, isUntracked: false },
+        { ...expense, isUntracked: true },
+        { ...expense, accountId: "foreign", isUntracked: true },
+        { ...income, isUntracked: true },
+    ]) {
+        assert.equal((await request("POST", input)).status, 400);
+    }
+    const before = db.records.positionHistory.length;
+    assert.equal((await request("PUT", { ...expense, accountId: "foreign" }, db.records.transactions[0].id)).status, 400);
+    assert.equal(db.records.positionHistory.length, before);
+});
+
+test("Untracked spending remains in expense/category/cash-flow reports while assets stay unchanged", async () => {
+    const { monthlyActivity, categorySpending, financialSnapshot } = await import("../src/features/finance/utils/finance-calculations.ts");
+    const { expenseToTransaction, transactionsToExpenses } = await import("../src/features/finance/utils/expense-transactions.ts");
+    const { monthlyActivityComparison } = await import("../src/features/finance/utils/finance-comparisons.ts");
+    const { UNTRACKED_EXPENSE_ACCOUNT, expenseAccountName } = await import("../src/features/finance/utils/expense-account.ts");
+    const db = setup();
+    await request("POST", { ...income, amount: 1000 });
+    await request("POST", { ...expense, amount: 800, accountId: undefined, isUntracked: true });
+    const data = toFinanceDataResponse(db.records);
+    assert.equal(financialSnapshot(data).bank, 1100);
+    assert.equal(financialSnapshot(data).netWorth, 1100);
+    assert.deepEqual(monthlyActivity(data.transactions, "2026-10"), { income: 1000, expenses: 800, netCashFlow: 200, savingsRate: 20 });
+    assert.equal(monthlyActivityComparison(data.transactions, new Date(2026, 9, 30)).current.netCashFlow, 200);
+    assert.deepEqual(categorySpending(data.transactions, "2026-10"), [{ category: "Food", amount: 800 }]);
+    const editable = transactionsToExpenses(data.transactions)[0];
+    assert.equal(editable.account, UNTRACKED_EXPENSE_ACCOUNT);
+    assert.equal(expenseAccountName(editable.account, []), "Untracked");
+    assert.equal(expenseAccountName("bank", data.accounts), "Everyday");
+    const requestBody = expenseToTransaction(editable);
+    assert.equal(requestBody.isUntracked, true);
+    assert.equal(requestBody.accountId, undefined);
+});
+
+test("mode changes preserve recordedAt and do not double-count expenses absorbed by balance snapshots", async () => {
+    const data = records();
+    data.accounts[0].balanceSnapshotAt = new Date("2023-01-01T00:00:00Z");
+    data.accounts.push(bank("other"));
+    const db = setup(data);
+    const created = await request("POST", { ...expense, amount: 20 });
+    const id = created.body.transaction.id;
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "200");
+    await request("PUT", { ...expense, accountId: undefined, isUntracked: true, amount: 800 }, id);
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "200");
+    const moved = await request("PUT", { ...expense, accountId: "other", amount: 30 }, id);
+    assert.equal(moved.status, 200);
+    assert.equal(moved.body.transaction.recordedAt, created.body.transaction.recordedAt);
+    assert.equal(db.records.positionHistory.at(-1).bank.toString(), "170");
+});
+
 test("custom expense categories link to owned records without changing merchant, note or recordedAt", async () => {
     const db = setup();
     const input = { ...expense, category: "Groceries", description: "Local milk booth", note: "Milk" };

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 const { createFinanceStore, emptyFinanceData } = await import("../src/features/finance/store/finance-store-core.ts");
-import { transactionsToExpenses, expenseToTransaction } from "../src/features/finance/utils/expense-transactions.ts";
+const { transactionsToExpenses, expenseToTransaction } = await import("../src/features/finance/utils/expense-transactions.ts");
 import { createFinanceMutation } from "../src/features/finance/utils/finance-mutation.ts";
 import { accountBalance } from "../src/features/finance/utils/finance-calculations.ts";
 
@@ -77,6 +77,21 @@ function fixture(data = emptyFinanceData()) {
     }
     return { api, calls, store: createFinanceStore(api), data: () => data };
 }
+
+test("Untracked expense mode is sent through shared actions and survives a fresh store", async () => {
+    const { store, api, calls } = fixture({ ...emptyFinanceData(), accounts: [bank] });
+    await store.setSession("user");
+    const draft = { type: "expense", amount: 800, description: "Gym", category: "Health", date: "2026-10-01", isUntracked: true };
+    await store.actions.saveTransaction(draft);
+    assert.equal(calls.find(([method]) => method === "createTransaction")[1].isUntracked, true);
+    assert.equal(calls.find(([method]) => method === "createTransaction")[1].accountId, undefined);
+    const reloaded = createFinanceStore(api);
+    await reloaded.setSession("user");
+    assert.equal(reloaded.getSnapshot().data.transactions[0].isUntracked, true);
+    assert.equal(accountBalance(bank, reloaded.getSnapshot().data.transactions), bank.balanceSnapshot);
+    await reloaded.actions.saveTransaction({ ...draft, id: "transactions-new", accountId: "bank", isUntracked: false });
+    assert.equal(calls.find(([method]) => method === "updateTransaction")[2].isUntracked, false);
+});
 
 test("initialization populates all five collections and deduplicates concurrent consumers", async () => {
     const { store, calls } = fixture(fullData());
