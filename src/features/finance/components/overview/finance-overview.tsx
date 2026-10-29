@@ -181,6 +181,12 @@ function FinanceOverviewContent() {
                 </div>
                 <div className="flex flex-wrap gap-2 sm:justify-end">
                     <Link
+                        href="/finance/monthly-breakdown"
+                        className="flex h-10 items-center rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
+                        Monthly Breakdown
+                    </Link>
+                    <Link
                         href="/finance/expenses"
                         className="rounded-lg group flex h-10 gap-1 items-center border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     >

@@ -19,6 +19,13 @@ export const navigationRoutes: readonly NavigationRoute[] = [
         section: null,
     },
     { label: "Goals", href: "/goals", implemented: false, section: "workspace" },
+    {
+        label: "Monthly Breakdown",
+        href: "/finance/monthly-breakdown",
+        parentHref: "/finance",
+        implemented: true,
+        section: null,
+    },
     { label: "Habits & Tasks", href: "/habits", implemented: false, section: "workspace" },
     { label: "Career", href: "/career", implemented: false, section: "workspace" },
     { label: "Settings", href: "/settings", implemented: false, section: "manage" },

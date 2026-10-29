@@ -33,6 +33,8 @@ model User {
   transactions    FinanceTransaction[]
   positionHistory FinancialPositionSnapshot[]
   expenseCategories ExpenseCategory[]
+  monthlySnapshots MonthlyFinanceSnapshot[]
+  spendingPlan FinanceSpendingPlan?
 
   healthLogs    HealthLog[]
   healthTargets HealthTargets?
@@ -265,4 +267,32 @@ model HealthTargets {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("health_targets")
+}
+
+// Imported monthly summaries never participate in the transaction ledger.
+model MonthlyFinanceSnapshot {
+  id String @id @default(cuid())
+  userId String
+  month String @db.Char(7)
+  categories Json
+  total Decimal @db.Decimal(18, 2)
+  income Decimal @db.Decimal(18, 2)
+  left Decimal @db.Decimal(18, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("monthly_finance_snapshots")
+}
+
+model FinanceSpendingPlan {
+  userId String @id
+  targets Json
+  referenceIncome Decimal? @db.Decimal(18, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("finance_spending_plans")
 }

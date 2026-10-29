@@ -1,0 +1,818 @@
+[
+  {
+    "month": "IDEAL",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 7000
+      },
+      {
+        "name": "Food",
+        "amount": 3000
+      },
+      {
+        "name": "Traveling",
+        "amount": 0
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 500
+      },
+      {
+        "name": "Purchase",
+        "amount": 500
+      },
+      {
+        "name": "Laundry",
+        "amount": 500
+      },
+      {
+        "name": "Fuel",
+        "amount": 1200
+      },
+      {
+        "name": "Other",
+        "amount": 500
+      },
+      {
+        "name": "Bike",
+        "amount": 1000
+      },
+      {
+        "name": "EMI",
+        "amount": 8703
+      },
+      {
+        "name": "GYM",
+        "amount": 1000
+      },
+      {
+        "name": "SUP",
+        "amount": 500
+      },
+      {
+        "name": "Invest",
+        "amount": 2000
+      }
+    ],
+    "total": 33403,
+    "income": 34800,
+    "left": 1397
+  },
+  {
+    "month": "2025-12",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 7645
+      },
+      {
+        "name": "Food",
+        "amount": 6178
+      },
+      {
+        "name": "Traveling",
+        "amount": 974
+      },
+      {
+        "name": "Taxi",
+        "amount": 983
+      },
+      {
+        "name": "Bills",
+        "amount": 1358
+      },
+      {
+        "name": "Purchase",
+        "amount": 0
+      },
+      {
+        "name": "Laundry",
+        "amount": 470
+      },
+      {
+        "name": "Fuel",
+        "amount": 314
+      },
+      {
+        "name": "Other",
+        "amount": 5820
+      },
+      {
+        "name": "Bike",
+        "amount": 0
+      },
+      {
+        "name": "EMI",
+        "amount": 0
+      },
+      {
+        "name": "GYM",
+        "amount": 0
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 30742,
+    "income": 34800,
+    "left": 4058
+  },
+  {
+    "month": "2026-01",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 8371
+      },
+      {
+        "name": "Food",
+        "amount": 3100
+      },
+      {
+        "name": "Traveling",
+        "amount": 836
+      },
+      {
+        "name": "Taxi",
+        "amount": 580
+      },
+      {
+        "name": "Bills",
+        "amount": 832
+      },
+      {
+        "name": "Purchase",
+        "amount": 6215
+      },
+      {
+        "name": "Laundry",
+        "amount": 1000
+      },
+      {
+        "name": "Fuel",
+        "amount": 300
+      },
+      {
+        "name": "Other",
+        "amount": 6352
+      },
+      {
+        "name": "Bike",
+        "amount": 0
+      },
+      {
+        "name": "EMI",
+        "amount": 0
+      },
+      {
+        "name": "GYM",
+        "amount": 0
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 34586,
+    "income": 34800,
+    "left": 214
+  },
+  {
+    "month": "2026-02",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 7019
+      },
+      {
+        "name": "Food",
+        "amount": 2284
+      },
+      {
+        "name": "Traveling",
+        "amount": 915
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 649
+      },
+      {
+        "name": "Purchase",
+        "amount": 1118
+      },
+      {
+        "name": "Laundry",
+        "amount": 470
+      },
+      {
+        "name": "Fuel",
+        "amount": 986
+      },
+      {
+        "name": "Other",
+        "amount": 1472
+      },
+      {
+        "name": "Bike",
+        "amount": 759
+      },
+      {
+        "name": "EMI",
+        "amount": 0
+      },
+      {
+        "name": "GYM",
+        "amount": 0
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 22672,
+    "income": 34800,
+    "left": 12128
+  },
+  {
+    "month": "2026-03",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 8627
+      },
+      {
+        "name": "Food",
+        "amount": 1831
+      },
+      {
+        "name": "Traveling",
+        "amount": 80
+      },
+      {
+        "name": "Taxi",
+        "amount": 170
+      },
+      {
+        "name": "Bills",
+        "amount": 99
+      },
+      {
+        "name": "Purchase",
+        "amount": 6024
+      },
+      {
+        "name": "Laundry",
+        "amount": 520
+      },
+      {
+        "name": "Fuel",
+        "amount": 1749
+      },
+      {
+        "name": "Other",
+        "amount": 800
+      },
+      {
+        "name": "Bike",
+        "amount": 1778
+      },
+      {
+        "name": "EMI",
+        "amount": 0
+      },
+      {
+        "name": "GYM",
+        "amount": 0
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 28678,
+    "income": 34800,
+    "left": 6122
+  },
+  {
+    "month": "2026-04",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 7476
+      },
+      {
+        "name": "Food",
+        "amount": 2110
+      },
+      {
+        "name": "Traveling",
+        "amount": 0
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 810
+      },
+      {
+        "name": "Purchase",
+        "amount": 194
+      },
+      {
+        "name": "Laundry",
+        "amount": 540
+      },
+      {
+        "name": "Fuel",
+        "amount": 1029
+      },
+      {
+        "name": "Other",
+        "amount": 1805
+      },
+      {
+        "name": "Bike",
+        "amount": 0
+      },
+      {
+        "name": "EMI",
+        "amount": 9658
+      },
+      {
+        "name": "GYM",
+        "amount": 0
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 30622,
+    "income": 34800,
+    "left": 4178
+  },
+  {
+    "month": "2026-05",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 7857
+      },
+      {
+        "name": "Food",
+        "amount": 4024
+      },
+      {
+        "name": "Traveling",
+        "amount": 0
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 1259
+      },
+      {
+        "name": "Purchase",
+        "amount": 2995
+      },
+      {
+        "name": "Laundry",
+        "amount": 500
+      },
+      {
+        "name": "Fuel",
+        "amount": 1103
+      },
+      {
+        "name": "Other",
+        "amount": 1510
+      },
+      {
+        "name": "Bike",
+        "amount": 250
+      },
+      {
+        "name": "EMI",
+        "amount": 8703
+      },
+      {
+        "name": "GYM",
+        "amount": 0
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 35201,
+    "income": 34800,
+    "left": -401
+  },
+  {
+    "month": "2026-06",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 7056
+      },
+      {
+        "name": "Food",
+        "amount": 3321
+      },
+      {
+        "name": "Traveling",
+        "amount": 3200
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 139
+      },
+      {
+        "name": "Purchase",
+        "amount": 928
+      },
+      {
+        "name": "Laundry",
+        "amount": 720
+      },
+      {
+        "name": "Fuel",
+        "amount": 1626
+      },
+      {
+        "name": "Other",
+        "amount": 3700
+      },
+      {
+        "name": "Bike",
+        "amount": 580
+      },
+      {
+        "name": "EMI",
+        "amount": 8703
+      },
+      {
+        "name": "GYM",
+        "amount": 900
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 37873,
+    "income": 34800,
+    "left": -3073
+  },
+  {
+    "month": "2026-07",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 10827
+      },
+      {
+        "name": "Food",
+        "amount": 1884
+      },
+      {
+        "name": "Traveling",
+        "amount": 180
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 789
+      },
+      {
+        "name": "Purchase",
+        "amount": 0
+      },
+      {
+        "name": "Laundry",
+        "amount": 560
+      },
+      {
+        "name": "Fuel",
+        "amount": 1109
+      },
+      {
+        "name": "Other",
+        "amount": 574
+      },
+      {
+        "name": "Bike",
+        "amount": 714
+      },
+      {
+        "name": "EMI",
+        "amount": 8703
+      },
+      {
+        "name": "GYM",
+        "amount": 900
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 33240,
+    "income": 34800,
+    "left": 1560
+  },
+  {
+    "month": "2026-08",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 7982
+      },
+      {
+        "name": "Food",
+        "amount": 3870
+      },
+      {
+        "name": "Traveling",
+        "amount": 0
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 139
+      },
+      {
+        "name": "Purchase",
+        "amount": 0
+      },
+      {
+        "name": "Laundry",
+        "amount": 470
+      },
+      {
+        "name": "Fuel",
+        "amount": 221
+      },
+      {
+        "name": "Other",
+        "amount": 120
+      },
+      {
+        "name": "Bike",
+        "amount": 0
+      },
+      {
+        "name": "EMI",
+        "amount": 8703
+      },
+      {
+        "name": "GYM",
+        "amount": 900
+      },
+      {
+        "name": "SUP",
+        "amount": 0
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 29405,
+    "income": 34800,
+    "left": 5395
+  },
+  {
+    "month": "2026-09",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7000
+      },
+      {
+        "name": "Groceries",
+        "amount": 12513
+      },
+      {
+        "name": "Food",
+        "amount": 2879
+      },
+      {
+        "name": "Traveling",
+        "amount": 0
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 476
+      },
+      {
+        "name": "Purchase",
+        "amount": 286
+      },
+      {
+        "name": "Laundry",
+        "amount": 440
+      },
+      {
+        "name": "Fuel",
+        "amount": 579
+      },
+      {
+        "name": "Other",
+        "amount": 482
+      },
+      {
+        "name": "Bike",
+        "amount": 500
+      },
+      {
+        "name": "EMI",
+        "amount": 8703
+      },
+      {
+        "name": "GYM",
+        "amount": 800
+      },
+      {
+        "name": "SUP",
+        "amount": 583
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 35241,
+    "income": 34800,
+    "left": -441
+  },
+  {
+    "month": "2026-10",
+    "categories": [
+      {
+        "name": "Rent",
+        "amount": 7300
+      },
+      {
+        "name": "Groceries",
+        "amount": 6048
+      },
+      {
+        "name": "Food",
+        "amount": 2635
+      },
+      {
+        "name": "Traveling",
+        "amount": 0
+      },
+      {
+        "name": "Taxi",
+        "amount": 0
+      },
+      {
+        "name": "Bills",
+        "amount": 476
+      },
+      {
+        "name": "Purchase",
+        "amount": 1240
+      },
+      {
+        "name": "Laundry",
+        "amount": 220
+      },
+      {
+        "name": "Fuel",
+        "amount": 556
+      },
+      {
+        "name": "Other",
+        "amount": 716
+      },
+      {
+        "name": "Bike",
+        "amount": 0
+      },
+      {
+        "name": "EMI",
+        "amount": 8703
+      },
+      {
+        "name": "GYM",
+        "amount": 800
+      },
+      {
+        "name": "SUP",
+        "amount": 583
+      },
+      {
+        "name": "Invest",
+        "amount": 0
+      }
+    ],
+    "total": 29277,
+    "income": 34800,
+    "left": 5523
+  }
+]
