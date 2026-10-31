@@ -1,36 +1,23 @@
-import type { HealthTargets, Prisma, PrismaClient } from "../../../generated/prisma/client";
+import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { formatUtcDateValue } from "../../utils/date";
 import {
-    canonical, fingerprint, healthTargetsFingerprint, healthTargetsRecordSchema,
-    healthTargetsReplacementSchema, models, normalizeEmail, recordCounts, recordSetSchema,
+    canonical, fingerprint, models, normalizeEmail, recordCounts, recordSetSchema,
     requiredMigrations, requireTransfer, schemaHash, sha256, validatePackage,
-    type HealthTargetsReplacement, type Model, type Policy, type RecordSet, type TransferPackage,
+    type Model, type Policy, type RecordSet, type TransferPackage,
 } from "./contracts";
 import { builtInExpenseCategories, categoryNameKey } from "../../../features/finance/utils/expense-categories";
 import {
     executePlan, mappedId, planTransfer, verifyOwner,
-    type CreateAction, type ReplaceHealthTargetsAction,
+    type CreateAction,
 } from "./plan";
 
 type Transaction = Prisma.TransactionClient;
 
-function serializeHealthTargets(row: HealthTargets): RecordSet["healthTargets"][number] {
-    const decimal = (value: Prisma.Decimal | null) => value === null ? null : value.toFixed(2);
-    return {
-        ...row,
-        weightGoalKg: decimal(row.weightGoalKg),
-        proteinGramsPerDay: decimal(row.proteinGramsPerDay),
-        carbsGramsPerDay: decimal(row.carbsGramsPerDay),
-        fiberGramsPerDay: decimal(row.fiberGramsPerDay),
-        updatedAt: row.updatedAt.toISOString(),
-    };
-}
-
 /** Only approved models; strict export contracts reject unreviewed new fields. */
 export async function readApprovedRecords(tx: Transaction, userId: string): Promise<RecordSet> {
     const owned = { where: { userId }, orderBy: { id: "asc" as const } };
-    const [logs, targets, snapshots, plans, categories] = await Promise.all([
-        tx.healthLog.findMany(owned), tx.healthTargets.findMany(owned),
+    const [logs, snapshots, plans, categories] = await Promise.all([
+        tx.healthLog.findMany(owned),
         tx.monthlyFinanceSnapshot.findMany(owned),
         tx.financeSpendingPlan.findMany({ where: { userId }, orderBy: { userId: "asc" } }),
         tx.expenseCategory.findMany(owned),
@@ -54,7 +41,6 @@ export async function readApprovedRecords(tx: Transaction, userId: string): Prom
             carbsGrams: money(row.carbsGrams), fiberGrams: money(row.fiberGrams),
             createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
         })),
-        healthTargets: targets.map(serializeHealthTargets),
         monthlyFinanceSnapshot: snapshots.map((row) => ({
             ...row, categories: categoryAmounts(row.categories), total: row.total.toFixed(2),
             income: row.income.toFixed(2), left: row.left.toFixed(2),
@@ -96,12 +82,6 @@ export async function verifySchema(tx: Transaction, expectedDatabase: string) {
             proteinGrams: "decimal(8,2)?", carbsGrams: "decimal(8,2)?", fiberGrams: "decimal(8,2)?",
             createdAt: "datetime(3)", updatedAt: "datetime(3)",
         },
-        health_targets: {
-            id: "varchar(191)", userId: "varchar(191)", weightGoalKg: "decimal(6,2)?",
-            stepsPerDay: "int?", sleepMinutesPerDay: "int?", waterMlPerDay: "int?", caloriesKcalPerDay: "int?",
-            proteinGramsPerDay: "decimal(8,2)?", carbsGramsPerDay: "decimal(8,2)?", fiberGramsPerDay: "decimal(8,2)?",
-            updatedAt: "datetime(3)",
-        },
         monthly_finance_snapshots: {
             id: "varchar(191)", userId: "varchar(191)", month: "char(7)", categories: "json",
             total: "decimal(18,2)", income: "decimal(18,2)", left: "decimal(18,2)",
@@ -136,10 +116,10 @@ export async function verifySchema(tx: Transaction, expectedDatabase: string) {
         FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND NON_UNIQUE = 0
         GROUP BY TABLE_NAME, INDEX_NAME`;
     for (const [table, cols] of [
-        ["user", "email"], ["health_logs", "userId,date"], ["health_targets", "userId"],
+        ["user", "email"], ["health_logs", "userId,date"],
         ["monthly_finance_snapshots", "userId,month"], ["finance_spending_plans", "userId"],
         ["expense_categories", "userId,normalizedName"],
-        ["health_logs", "id"], ["health_targets", "id"],
+        ["health_logs", "id"],
         ["monthly_finance_snapshots", "id"], ["expense_categories", "id"],
     ]) requireTransfer(indexes.some((row) => row.TABLE_NAME === table && row.cols === cols), "REQUIRED_UNIQUE_KEY_MISSING");
 }
@@ -168,7 +148,7 @@ export async function exportPackage(client: PrismaClient, policy: Policy, source
     }, { isolationLevel: "RepeatableRead", timeout: 30_000 });
 }
 
-/** Create-only boundary; HealthTargets replacement has its own narrow writer. */
+/** Create-only boundary for the four approved models. */
 export async function createTransferredRecord(tx: Transaction, action: CreateAction) {
     const row = action.record;
     if (action.model === "healthLog" && "date" in row) {
@@ -178,8 +158,6 @@ export async function createTransferredRecord(tx: Transaction, action: CreateAct
             createdAt: new Date(row.createdAt),
             updatedAt: new Date(row.updatedAt),
         } });
-    } else if (action.model === "healthTargets" && "weightGoalKg" in row) {
-        await tx.healthTargets.create({ data: { ...row, updatedAt: new Date(row.updatedAt) } });
     } else if (action.model === "monthlyFinanceSnapshot" && "month" in row) {
         await tx.monthlyFinanceSnapshot.create({ data: {
             ...row, categories: row.categories.map((item) => ({ name: item.name, amount: Number(item.amount) })),
@@ -195,57 +173,6 @@ export async function createTransferredRecord(tx: Transaction, action: CreateAct
     } else requireTransfer(false, "UNAPPROVED_MODEL");
 }
 
-/** Recheck the reviewed preimage, then compare-and-set only this owner's target. */
-export async function replaceHealthTargets(tx: Transaction, action: ReplaceHealthTargetsAction) {
-    requireTransfer(action.model === "healthTargets", "UNAPPROVED_MODEL");
-    const parsed = healthTargetsReplacementSchema.safeParse(action.approval);
-    const record = healthTargetsRecordSchema.safeParse(action.record);
-    requireTransfer(parsed.success && parsed.data.enabled && record.success, "INVALID_REPLACEMENT_APPROVAL");
-    const approval = parsed.data;
-    const source = record.data;
-    requireTransfer(
-        source.id === approval.recordId && source.userId === approval.destinationUserId,
-        "REPLACEMENT_OWNER_MISMATCH",
-    );
-
-    const current = await tx.healthTargets.findUnique({
-        where: { userId: approval.destinationUserId },
-    });
-    requireTransfer(
-        current && current.id === approval.recordId &&
-            healthTargetsFingerprint(serializeHealthTargets(current)) === approval.expectedSHA256,
-        "HEALTH_TARGETS_REVIEW_STALE",
-    );
-
-    const changed = await tx.healthTargets.updateMany({
-        where: {
-            id: current.id,
-            userId: current.userId,
-            updatedAt: current.updatedAt,
-            weightGoalKg: current.weightGoalKg,
-            stepsPerDay: current.stepsPerDay,
-            sleepMinutesPerDay: current.sleepMinutesPerDay,
-            waterMlPerDay: current.waterMlPerDay,
-            caloriesKcalPerDay: current.caloriesKcalPerDay,
-            proteinGramsPerDay: current.proteinGramsPerDay,
-            carbsGramsPerDay: current.carbsGramsPerDay,
-            fiberGramsPerDay: current.fiberGramsPerDay,
-        },
-        data: {
-            weightGoalKg: source.weightGoalKg,
-            stepsPerDay: source.stepsPerDay,
-            sleepMinutesPerDay: source.sleepMinutesPerDay,
-            waterMlPerDay: source.waterMlPerDay,
-            caloriesKcalPerDay: source.caloriesKcalPerDay,
-            proteinGramsPerDay: source.proteinGramsPerDay,
-            carbsGramsPerDay: source.carbsGramsPerDay,
-            fiberGramsPerDay: source.fiberGramsPerDay,
-            updatedAt: new Date(source.updatedAt),
-        },
-    });
-    requireTransfer(changed.count === 1, "HEALTH_TARGETS_REVIEW_STALE");
-}
-
 export async function inspectDestination(tx: Transaction, pkg: TransferPackage, destinationId: string) {
     const records = await readApprovedRecords(tx, destinationId);
     const categoryKeys = records.expenseCategory.map((row) => categoryNameKey(row.name));
@@ -258,9 +185,8 @@ export async function inspectDestination(tx: Transaction, pkg: TransferPackage, 
         const args = { where: { id: { in: ids } }, select: { id: true, userId: true } } as const;
         // Explicit delegates: no other-user measurements or unapproved models are read.
         const rows = model === "healthLog" ? await tx.healthLog.findMany(args)
-            : model === "healthTargets" ? await tx.healthTargets.findMany(args)
-                : model === "monthlyFinanceSnapshot" ? await tx.monthlyFinanceSnapshot.findMany(args)
-                    : await tx.expenseCategory.findMany(args);
+            : model === "monthlyFinanceSnapshot" ? await tx.monthlyFinanceSnapshot.findMany(args)
+                : await tx.expenseCategory.findMany(args);
         identifiers.push(...rows.map((row) => ({ model, ...row })));
     }
     return { records, identifiers };
@@ -268,14 +194,13 @@ export async function inspectDestination(tx: Transaction, pkg: TransferPackage, 
 
 export async function importInTransaction(
     tx: Transaction, pkg: TransferPackage, destinationId: string, email: string,
-    dryRun: boolean, replacement: HealthTargetsReplacement = { enabled: false },
+    dryRun: boolean,
 ) {
     verifyOwner(await ownerMatches(tx, destinationId, email), destinationId, pkg.manifest.source.email);
     requireTransfer(normalizeEmail(email) === pkg.manifest.source.email, "OWNER_MAPPING_REJECTED");
-    const plan = planTransfer(pkg, destinationId, await inspectDestination(tx, pkg, destinationId), replacement);
+    const plan = planTransfer(pkg, destinationId, await inspectDestination(tx, pkg, destinationId));
     const report = await executePlan(plan, {
         create: (action) => createTransferredRecord(tx, action),
-        replaceHealthTargets: (action) => replaceHealthTargets(tx, action),
     }, dryRun);
     return { ...report, packageSHA256: pkg.sha256 };
 }
@@ -285,7 +210,7 @@ export async function importPackage(client: PrismaClient, pkg: TransferPackage, 
     validatePackage(pkg, policy);
     return client.$transaction(async (tx) => {
         await verifySchema(tx, database);
-        return importInTransaction(tx, pkg, destinationId, email, dryRun, policy.healthTargetsReplacement);
+        return importInTransaction(tx, pkg, destinationId, email, dryRun);
     }, { isolationLevel: "Serializable", timeout: 30_000 });
 }
 

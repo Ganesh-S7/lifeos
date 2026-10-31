@@ -16,7 +16,7 @@ On 2026-10-31, read-only inspection confirmed loopback `localhost:3306/lifeos`:
 
 - Ganesh S's explicitly selected local owner, matched by email, has 17 Health logs
   on 17 distinct dates, 2026-10-13 through 2026-10-29; 11 contain weight.
-- One HealthTargets record contains all eight target fields.
+- The local HealthTargets record is excluded; existing Production targets are preserved.
 - Eleven historical snapshots and the separate 15-target plan match every value
   in the existing validated historical source. Plan total/reference/buffer are
   INR 33,403 / 34,800 / 1,397. No transactions are generated from these values.
@@ -40,12 +40,11 @@ The strict package has exactly these arrays (unknown keys/models are rejected):
 | Array | Data and relationship |
 | --- | --- |
 | `healthLog` | All selected owner's dated measurements, source IDs, owner IDs and timestamps |
-| `healthTargets` | One separate targets record and its original updatedAt |
 | `monthlyFinanceSnapshot` | Eleven December 2025–October 2026 summaries, with categories, total, income, LEFT and timestamps |
 | `financeSpendingPlan` | One separate IDEAL plan, 15 targets, reference income and timestamps |
 | `expenseCategory` | Owned custom definitions used by the plan, plus explicitly reviewed additional category IDs |
 
-No bank accounts, transactions, income ledger entries, investments, liabilities,
+No HealthTargets, bank accounts, transactions, income ledger entries, investments, liabilities,
 position history, auth accounts/sessions/users, rate limits or operational data
 are exported or imported. Every record must reference the manifest's source
 owner. Existing Production identity is read, never created or updated.
@@ -84,8 +83,6 @@ this package never deletes any category or historical label.
   ID/owner remapping is excluded. Same-date differing metadata or values is a
   conflict, not an automatic merge. Exact existing daily records can be skipped
   even if their IDs differ; the internal reconciliation map uses the existing ID.
-- Existing targets match exactly, including updatedAt, unless the private policy
-  explicitly approves the HealthTargets-only replacement described below.
 - Snapshot/plan equality compares financial content; existing destination
   metadata is preserved on identical skips. A differing plan, including a NULL
   reference income, is a conflict. Nothing initializes or replaces it silently.
@@ -93,62 +90,34 @@ this package never deletes any category or historical label.
   Existing equivalent definitions are skipped and mapped to their existing IDs.
   Invalid/duplicate destination normalization is rejected.
 
-There is no generic update/upsert/delete path. The sole exception is an explicitly
-reviewed, owner-scoped HealthTargets replacement. All conflicts are collected before apply.
+There is no update/upsert/delete path. HealthTargets are not read or written by
+the transfer. All conflicts are collected before apply.
 Apply runs in one Serializable Prisma transaction. Concurrent unique/serialization
 failures roll back the whole operation and return a sanitized conflict code;
 there are no retries. A later app edit can make a rerun conflict: review it,
 do not overwrite the user's newer values.
 
-## Reviewed HealthTargets replacement
+## HealthTargets exclusion and filtered private package
 
-Policies default to `healthTargetsReplacement: { "enabled": false }` and
-`allowProductionApply: false`. Existing policies and source packages need no
-rewriting; the package format, manifest counts and digest remain unchanged.
+The current transfer accepts exactly four models: HealthLog, MonthlyFinanceSnapshot,
+FinanceSpendingPlan and ExpenseCategory. HealthTargets keys in package records or
+counts are rejected, even when empty. Legacy `healthTargetsReplacement` policy
+settings may only be `{ "enabled": false }`; enabled approval objects are rejected.
+No target reader, creator, replacement writer or delete operation exists.
 
-After a separately authorized read-only inspection, keep the destination target
-record and its ID private. Use `readApprovedRecords(tx, destinationUserId)` to
-obtain the canonical target representation, then `healthTargetsFingerprint(row)`
-from `contracts.ts`. Do not hash raw Prisma Decimal/Date objects or hand-format
-values. The fingerprint includes the destination ID, user ID, all eight nullable
-fields and updatedAt. Do not print measurements or put approval files outside the
-protected transfer directory.
+The original `source-2026-10-31.json` and existing policies remain private backups.
+Use `source-2026-10-31-no-health-targets.json` with
+`policy.production-readonly-no-health-targets.json` for the newly approved scope:
+17 logs, 11 snapshots, 1 spending plan and 12 categories = 41 records. The filtered
+package retains each remaining record unchanged, removes HealthTargets from records
+and counts, and recomputes the existing canonical package SHA-256. Its matching
+policy preserves the verified endpoints and other approvals, has `readOnly:true`,
+`allowProductionApply:false`, and replacement disabled. Older packages/policies
+with HealthTargets counts intentionally fail current validation.
 
-The following is a template, not an executable policy:
-
-```json
-{
-  "healthTargetsReplacement": {
-    "enabled": true,
-    "destinationUserId": "<verified destination user ID>",
-    "recordId": "<inspected destination target ID>",
-    "expectedSHA256": "<64 lowercase hex characters from healthTargetsFingerprint>"
-  }
-}
-```
-
-Add this field to the existing complete policy; it does not replace endpoint,
-source, count or category approvals. The planner reports `replace: 1` only when
-the current record ID and fingerprint match the reviewed preimage and the values
-differ. Missing/recreated/edited records conflict. An exact already-imported target
-with the approved ID skips on rerun without reusing the old preimage for a write.
-The destination ID/userId remain unchanged. All eight values, including NULLs,
-and the source updatedAt replace the destination values; this is not a merge and
-updatedAt is not the time of the transfer. No other model can be replaced.
-
-Earlier one-time schema-audit snippets that pinned `database.ts` will reject its
-new fingerprint. Re-review/update those snippets separately; do not bypass their
-baseline guard. This does not affect the unchanged source package or Prisma schema.
-
-Apply rechecks the preimage inside the existing Serializable transaction and uses
-a compare-and-set predicate covering identity, timestamp and all existing values.
-Exactly one row must match. Replacement and all creates commit or roll back
-together; any other-model conflict blocks every mutation. There are no retries.
-
-Every model now reports `create`, `replace`, `skip`, `conflict`. For an otherwise
-empty destination with differing existing targets, the plan is 41 creates and one
-replacement; actual inspection may find skips/conflicts. No target values or
-replacement approval identifiers are added to CLI output.
+No Production dry-run or apply was performed to prepare these artifacts.
+Use the filtered package and policy together for a future separately authorized
+preview; never reuse the old package digest as a write confirmation.
 
 ## Private files and environment policy
 
@@ -179,7 +148,6 @@ Create a policy using the verified endpoint, not a guessed environment label:
   "destinations": { "production": [], "local-test": [] },
   "expectedCounts": {
     "healthLog": 17,
-    "healthTargets": 1,
     "monthlyFinanceSnapshot": 11,
     "financeSpendingPlan": 1,
     "expenseCategory": 12,
@@ -249,13 +217,14 @@ No policy in `.lifeos-transfer/` was modified or enabled by this implementation.
 
 Dry-run uses SELECT-only application operations and never invokes a mutation
 delegate or DDL. Reports contain counts, safe conflict codes and package digest,
-not measurements, SQL, connection URLs or exceptions. `create`/`replace` mean
-**planned** operations in dry-run and completed operations in a successful apply. Exit 0 means
+not measurements, SQL, connection URLs or exceptions. `replace` is retained as a
+zero-valued report field for compatibility. `create` means **planned** operations
+in dry-run and completed operations in a successful apply. Exit 0 means
 success; dry-run conflicts return 2; rejected/failed operations return 1. A
 conflicting apply returns counts/codes with `applied:false` and performs no writes.
 Export dry-run generates a fresh export timestamp/digest; confirm the saved
 package's import-preview digest, not an earlier export-preview digest.
-The verified package from this task is `source-2026-10-31.json`; the commands
+The current verified filtered package is `source-2026-10-31-no-health-targets.json`; the commands
 above use a fresh `-v2` filename to avoid overwriting it. Freeze local entry during
 the final export/cutover window, or review new counts and re-export if source
 records change. Do not silently accept an outdated package after further edits.
@@ -265,7 +234,7 @@ records change. Do not silently accept an outdated package after further edits.
 1. Review the existing 22 release commits beyond remote main `35f853f` and finish
    local manual checks. Confirm Vercel's actual Production branch/deployed SHA.
 2. Verify the destination owner by unique email plus explicit ID. Check existing
-   Health dates/targets, summaries and plan without logging sensitive values.
+   Health dates, summaries and plan without logging sensitive values.
    Stop on ambiguous ownership, conflicting records or an unexpected database.
 3. Establish backups and a tested recovery procedure. MySQL 8.4.11 client/dump
    tools are installed locally, but hosted dump permissions, Aiven backup
@@ -305,11 +274,11 @@ records change. Do not silently accept an outdated package after further edits.
    types/nullability, owner FKs, unique keys and category normalization collation.
    It rejects incompatible destinations; it never repairs schema automatically.
 8. Review the private package and Production dry-run. Expected empty destination:
-   17 logs, 1 targets record, 11 snapshots, 1 plan and 12 categories = 42 creates.
+   17 logs, 11 snapshots, 1 plan and 12 categories = 41 creates.
    Existing identical records reduce creates. Any conflict blocks all apply writes.
 9. Run the explicit apply command only after reviewing its digest and owner.
    Repeat dry-run and verify ownership, all original dates/timestamps/measurements,
-   source-to-destination ID mappings, totals and target values. Compare protected
+   source-to-destination ID mappings and totals; existing targets must be unchanged. Compare protected
    Finance ledger/accounts/positions/auth data before/after; they must be unchanged.
 10. Run authorized Production login/Health/Finance/Untracked/Monthly Breakdown
     smoke checks, then begin genuine daily tracking. November 2026 onward uses
@@ -327,8 +296,7 @@ entries. Old app rollback is unsafe once new Untracked records have NULL account
   explicit confirmation, redaction and artifact exclusion.
 - `tests/data-transfer.mysql.test.mjs`: opt-in real loopback `lifeos` test, with
   synthetic fixtures created only inside transactions that **always roll back**.
-  No delete/cleanup, schema changes or committed fixture writes. Target updates
-  occur only on synthetic records inside transactions that roll back. Verifies all
+  No delete/cleanup, schema changes or committed fixture writes. Existing synthetic targets must remain unchanged. Verifies all
   models after dry-run, successful in-transaction creates/reruns, conflicts,
   late write failure rollback, real source hashes and protected global counts.
   Use a quiet local database; never run against Production:

@@ -36,11 +36,6 @@ export function fixture() {
             waterMl: 2000, caloriesKcal: 1800, proteinGrams: "90.01", carbsGrams: null, fiberGrams: "20.50",
             createdAt: time, updatedAt: time,
         })),
-        healthTargets: [{
-            id: "target", userId: owner.id, weightGoalKg: "65.50", stepsPerDay: 8000,
-            sleepMinutesPerDay: 480, waterMlPerDay: 2500, caloriesKcalPerDay: 2000,
-            proteinGramsPerDay: "100.25", carbsGramsPerDay: null, fiberGramsPerDay: "25.00", updatedAt: time,
-        }],
         monthlyFinanceSnapshot: source.history.map((row) => ({
             ...row, id: `snapshot-${row.month}`, userId: owner.id,
             categories: categoryAmounts(row.categories), total: row.total.toFixed(2),
@@ -71,37 +66,4 @@ export function fixture() {
     };
     const pkg = resign({ manifest, records });
     return { pkg: contracts.validatePackage(pkg, policy), policy };
-}
-
-export function replacementFixture() {
-    const { pkg, policy } = fixture();
-    const existing = {
-        ...pkg.records.healthTargets[0],
-        id: "existing-health-target",
-        userId: destinationId,
-        weightGoalKg: "64.00",
-        stepsPerDay: 6000,
-        sleepMinutesPerDay: 420,
-        waterMlPerDay: 1800,
-        caloriesKcalPerDay: 2200,
-        proteinGramsPerDay: "80.00",
-        carbsGramsPerDay: "200.00",
-        fiberGramsPerDay: "15.00",
-        updatedAt: "2026-10-01T00:00:00.000Z",
-    };
-    const approval = {
-        enabled: true,
-        destinationUserId: destinationId,
-        recordId: existing.id,
-        expectedSHA256: contracts.healthTargetsFingerprint(existing),
-    };
-    const destination = emptyDestination();
-    destination.records.healthTargets.push(existing);
-    return {
-        pkg,
-        existing,
-        destination,
-        approval,
-        policy: contracts.policySchema.parse({ ...policy, healthTargetsReplacement: approval }),
-    };
 }

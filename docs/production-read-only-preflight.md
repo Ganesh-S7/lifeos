@@ -81,20 +81,22 @@ same policy. `readOnly:true` continues to reject apply at the CLI and transactio
 boundaries. No destination is added automatically and no credentials are loaded
 from local dotenv files in process mode.
 
-HealthTargets replacement is separately disabled by default. See
-[the replacement approval contract](data-transfer.md#reviewed-healthtargets-replacement).
-It binds the destination user/target ID and existing-content fingerprint. All other
-models remain create-only. Source packages and their hashes need not be regenerated.
+HealthTargets is completely excluded from the transfer. Enabled replacement
+approvals and target records/counts are rejected. Preserve the original package
+and policies as backups; use the filtered 41-record package
+`source-2026-10-31-no-health-targets.json` and matching
+`policy.production-readonly-no-health-targets.json` for the next authorized preview.
+No write-enabled policy was created. See [the exclusion contract](data-transfer.md#healthtargets-exclusion-and-filtered-private-package).
 
 After prerequisites and separate execution approval, run from the repository in
 the user's private shell with runtime variables already configured:
 
 ```powershell
 # Review the exact write policy without performing mutations.
-node scripts/transfer-lifeos-data.mjs import --environment production --process-env --policy .lifeos-transfer/policy.production-write.json --package .lifeos-transfer/source-2026-10-31.json --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --dry-run
+node scripts/transfer-lifeos-data.mjs import --environment production --process-env --policy .lifeos-transfer/policy.production-readonly-no-health-targets.json --package .lifeos-transfer/source-2026-10-31-no-health-targets.json --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --dry-run
 
 # Future separately authorized apply; never run as part of implementation/tests.
-node scripts/transfer-lifeos-data.mjs import --environment production --process-env --policy .lifeos-transfer/policy.production-write.json --package .lifeos-transfer/source-2026-10-31.json --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --apply --confirm-owner $DestinationOwnerId --confirm-sha256 $ReviewedSHA256 --confirm-production-write
+node scripts/transfer-lifeos-data.mjs import --environment production --process-env --policy .lifeos-transfer/policy.production-write.json --package .lifeos-transfer/source-2026-10-31-no-health-targets.json --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --apply --confirm-owner $DestinationOwnerId --confirm-sha256 $ReviewedSHA256 --confirm-production-write
 ```
 
 These paths are templates. No write policy was created and no real destination
@@ -107,7 +109,7 @@ Only after secure identification, unique-email owner matching, actual migration
 and schema checks, and exact read-only policy approval, the command shape is:
 
 ```powershell
-corepack pnpm@10.10.0 dlx vercel@latest --cwd .lifeos-transfer --scope team_kRsh9z4kPEGTbbvF1xxryLkH env run -e production --project prj_hMRJH3KOJqfIdZkaEAznXJx6eTHF -- node ../scripts/transfer-lifeos-data.mjs import --environment production --process-env --policy .lifeos-transfer/policy.production-readonly.json --package .lifeos-transfer/source-2026-10-31.json --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --dry-run
+corepack pnpm@10.10.0 dlx vercel@latest --cwd .lifeos-transfer --scope team_kRsh9z4kPEGTbbvF1xxryLkH env run -e production --project prj_hMRJH3KOJqfIdZkaEAznXJx6eTHF -- node ../scripts/transfer-lifeos-data.mjs import --environment production --process-env --policy .lifeos-transfer/policy.production-readonly-no-health-targets.json --package .lifeos-transfer/source-2026-10-31-no-health-targets.json --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --dry-run
 ```
 
 The separate working directory avoids the CLI automatically loading normal local

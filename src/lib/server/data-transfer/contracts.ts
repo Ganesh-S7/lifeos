@@ -6,7 +6,7 @@ import { builtInExpenseCategories, categoryNameKey } from "../../../features/fin
 import { readHistoricalSource } from "../../../features/finance/monthly/server/historical-import";
 
 export const models = [
-    "healthLog", "healthTargets", "monthlyFinanceSnapshot", "financeSpendingPlan", "expenseCategory",
+    "healthLog", "monthlyFinanceSnapshot", "financeSpendingPlan", "expenseCategory",
 ] as const;
 export type Model = typeof models[number];
 
@@ -73,12 +73,6 @@ const log = z.strictObject({
     row.weightKg, row.steps, row.sleepMinutes, row.waterMl, row.caloriesKcal,
     row.proteinGrams, row.carbsGrams, row.fiberGrams,
 ].some((value) => value !== null));
-export const healthTargetsRecordSchema = z.strictObject({
-    ...owned, updatedAt: time, weightGoalKg: weight, stepsPerDay: integer,
-    sleepMinutesPerDay: integer.refine((value) => value === null || value <= 1440),
-    waterMlPerDay: integer, caloriesKcalPerDay: integer,
-    proteinGramsPerDay: nutrient, carbsGramsPerDay: nutrient, fiberGramsPerDay: nutrient,
-});
 const snapshot = z.strictObject({
     ...owned, month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     categories: z.array(amount).length(15), total: money, income: money,
@@ -95,14 +89,13 @@ const category = z.strictObject({
 
 export const recordSetSchema = z.strictObject({
     healthLog: z.array(log).max(100_000),
-    healthTargets: z.array(healthTargetsRecordSchema).length(1),
     monthlyFinanceSnapshot: z.array(snapshot).length(11),
     financeSpendingPlan: z.array(plan).length(1),
     expenseCategory: z.array(category).max(100),
 });
 export type RecordSet = z.infer<typeof recordSetSchema>;
 export const countsSchema = z.strictObject({
-    healthLog: z.number().int().min(1).max(100_000), healthTargets: z.literal(1),
+    healthLog: z.number().int().min(1).max(100_000),
     monthlyFinanceSnapshot: z.literal(11), financeSpendingPlan: z.literal(1),
     expenseCategory: z.number().int().min(0).max(100),
     weightMeasurements: z.number().int().min(0).max(100_000), planTargets: z.literal(15),
@@ -111,31 +104,12 @@ export const endpointSchema = z.strictObject({
     host: z.string().min(1).max(253).refine((host) => !/[\s/@?#:]/.test(host) || host === "[::1]"),
     port: z.number().int().min(1).max(65535), database: z.string().regex(/^[\w-]{1,64}$/),
 });
-export const healthTargetsReplacementSchema = z.discriminatedUnion("enabled", [
-    z.strictObject({ enabled: z.literal(false) }),
-    z.strictObject({
-        enabled: z.literal(true),
-        destinationUserId: id,
-        recordId: id,
-        expectedSHA256: z.string().regex(/^[a-f0-9]{64}$/),
-    }),
-]);
-export type HealthTargetsReplacement = z.infer<typeof healthTargetsReplacementSchema>;
-
-/** Includes identity, every nullable target field and the original timestamp. */
-export function healthTargetsFingerprint(record: unknown): string {
-    return sha256(canonical({
-        version: 1,
-        model: "healthTargets",
-        record: healthTargetsRecordSchema.parse(record),
-    }));
-}
-
 export const policySchema = z.strictObject({
     version: z.literal(1), source: endpointSchema,
     readOnly: z.boolean().default(false),
     allowProductionApply: z.boolean().default(false),
-    healthTargetsReplacement: healthTargetsReplacementSchema.default({ enabled: false }),
+    // Retain compatibility with disabled legacy policies; replacement cannot be enabled.
+    healthTargetsReplacement: z.strictObject({ enabled: z.literal(false) }).default({ enabled: false }),
     destinations: z.strictObject({
         production: z.array(endpointSchema).max(10),
         "local-test": z.array(endpointSchema).max(10),
@@ -199,7 +173,7 @@ export function validatePackage(input: unknown, policy: Policy): TransferPackage
         for (const row of pkg.records[model]) {
             requireTransfer(row.userId === pkg.manifest.source.ownerId, "WRONG_RECORD_OWNER");
             const key = "date" in row ? row.date : "month" in row ? row.month
-                : "normalizedName" in row ? row.normalizedName : "id" in row ? row.id : row.userId;
+                : "normalizedName" in row ? row.normalizedName : row.userId;
             requireTransfer(!seen.has(key), "DUPLICATE_SOURCE_RECORD");
             seen.add(key);
         }
