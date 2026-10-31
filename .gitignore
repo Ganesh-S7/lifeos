@@ -43,6 +43,9 @@ next-env.d.ts
 # Generated Prisma client
 /src/generated/prisma/
 
+# Private user-scoped transfer packages, policies and protected environment files
+/.lifeos-transfer/
+
 # Generated AI agent skills
 /.agents/skills/
 /.claude/skills/

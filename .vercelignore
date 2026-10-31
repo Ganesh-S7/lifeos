@@ -3,3 +3,6 @@
 
 # Generate the Prisma client from the schema during each build.
 /src/generated/prisma/
+
+# Never upload genuine Health/Finance transfer artifacts or transfer credentials.
+/.lifeos-transfer/
