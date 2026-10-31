@@ -255,4 +255,3 @@ test("typed client loads persisted records, sends plan-only writes and never fal
     t.mock.method(globalThis, "fetch", async () => Response.json({ plan: { invalid: "PRIVATE" } }));
     await assert.rejects(putSpendingPlan({ targets: [] }), /^Error: Unable to save your spending plan\. Please try again\.$/);
 });
-
