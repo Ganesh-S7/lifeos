@@ -40,9 +40,16 @@ export function parseArguments(args) {
     }
     const processEnvironment = values.has("--process-env");
     if (processEnvironment && (command !== "import" || values.get("--environment") !== "production" ||
-        !values.has("--dry-run") || values.has("--apply") || values.has("--env-file") ||
-        values.has("--confirm-owner") || values.has("--confirm-sha256") || values.has("--confirm-production-write"))) {
-        throw new Error("PROCESS_ENV_READ_ONLY_REQUIRED");
+        values.has("--env-file"))) {
+        throw new Error("PROCESS_ENV_PRODUCTION_IMPORT_REQUIRED");
+    }
+    if (processEnvironment && values.has("--dry-run") &&
+        (values.has("--confirm-owner") || values.has("--confirm-sha256") || values.has("--confirm-production-write"))) {
+        throw new Error("PROCESS_ENV_DRY_RUN_CONFIRMATIONS_REJECTED");
+    }
+    if (processEnvironment && values.has("--apply") &&
+        (!values.has("--confirm-owner") || !values.has("--confirm-sha256") || !values.has("--confirm-production-write"))) {
+        throw new Error("WRITE_CONFIRMATION_REQUIRED");
     }
     const required = ["--environment", "--policy", "--package", "--source-owner-id", "--owner-email"];
     if (!processEnvironment) required.push("--env-file");
@@ -68,16 +75,17 @@ export async function runTransfer(args, report = (value) => console.log(JSON.str
         }
         assertPrivateExclusions();
         const { policySchema, validatePackage, requireTransfer } = await import("../src/lib/server/data-transfer/contracts.ts");
-        const { verifyTarget, confirmImport, injectedProductionEnvironment } = await import("../src/lib/server/data-transfer/targets.ts");
+        const { verifyTarget, confirmImport, injectedProductionEnvironment, assertImportPolicy } = await import("../src/lib/server/data-transfer/targets.ts");
         const { exportPackage, importPackage } = await import("../src/lib/server/data-transfer/database.ts");
         const parsedPolicy = policySchema.safeParse(JSON.parse(readPrivateFile(values.get("--policy"))));
         requireTransfer(parsedPolicy.success, "INVALID_TRANSFER_POLICY");
         const policy = parsedPolicy.data;
         requireTransfer(!values.has("--apply") || !policy.readOnly, "READ_ONLY_POLICY");
+        if (command === "import") {
+            assertImportPolicy(policy, values.get("--environment"), values.has("--apply"), values.has("--process-env"));
+        }
         let env;
         if (values.has("--process-env")) {
-            requireTransfer(policy.readOnly, "READ_ONLY_POLICY_REQUIRED");
-            requireTransfer(policy.destinations.production.length === 1, "SINGLE_PRODUCTION_DESTINATION_REQUIRED");
             env = injectedProductionEnvironment(process.env);
         } else {
             const envPath = values.get("--env-file");
@@ -121,7 +129,8 @@ export async function runTransfer(args, report = (value) => console.log(JSON.str
     } catch (error) {
         const { TransferError } = await import("../src/lib/server/data-transfer/contracts.ts");
         const fileCodes = new Set([
-            "INVALID_ARGUMENTS", "PROCESS_ENV_READ_ONLY_REQUIRED", "PRIVATE_ARTIFACT_PATH_REQUIRED", "PRIVATE_ARTIFACT_EXCLUSION_REQUIRED",
+            "INVALID_ARGUMENTS", "PROCESS_ENV_PRODUCTION_IMPORT_REQUIRED", "PROCESS_ENV_DRY_RUN_CONFIRMATIONS_REJECTED",
+            "WRITE_CONFIRMATION_REQUIRED", "PRIVATE_ARTIFACT_PATH_REQUIRED", "PRIVATE_ARTIFACT_EXCLUSION_REQUIRED",
             "TRACKED_TRANSFER_ARTIFACTS", "PRIVATE_PERMISSIONS_REQUIRED", "INVALID_ARTIFACT_SIZE",
         ]);
         const code = error instanceof TransferError ? error.code : fileCodes.has(error.message) ? error.message

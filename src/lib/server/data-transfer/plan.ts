@@ -1,6 +1,8 @@
 import {
-    canonical, models, normalizeEmail, requireTransfer, sha256, TransferError,
-    type Model, type RecordSet, type TransferPackage,
+    canonical, healthTargetsFingerprint, healthTargetsReplacementSchema, models,
+    normalizeEmail, requireTransfer, sha256, TransferError,
+    type HealthTargetsReplacement, type Model, type OperationCounts,
+    type RecordSet, type TransferPackage,
 } from "./contracts";
 import { builtInExpenseCategories, categoryNameKey } from "../../../features/finance/utils/expense-categories";
 
@@ -26,11 +28,17 @@ export interface CreateAction {
     model: Model;
     record: RecordSet[Model][number];
 }
+export interface ReplaceHealthTargetsAction {
+    model: "healthTargets";
+    record: RecordSet["healthTargets"][number];
+    approval: Extract<HealthTargetsReplacement, { enabled: true }>;
+}
 export interface TransferPlan {
-    counts: Record<Model, { create: number; skip: number; conflict: number }>;
+    counts: Record<Model, OperationCounts>;
     conflicts: { model: Model; code: string }[];
     mappings: { model: Model; sourceId: string; destinationId: string }[];
     creates: CreateAction[];
+    replacements: ReplaceHealthTargetsAction[];
 }
 export interface DestinationData {
     records: RecordSet;
@@ -50,11 +58,23 @@ function comparable(model: Model, row: RecordSet[Model][number]) {
     return canonical(result);
 }
 
-export function planTransfer(pkg: TransferPackage, destinationOwner: string, destination: DestinationData): TransferPlan {
+export function planTransfer(
+    pkg: TransferPackage,
+    destinationOwner: string,
+    destination: DestinationData,
+    replacement: HealthTargetsReplacement = { enabled: false },
+): TransferPlan {
+    const parsed = healthTargetsReplacementSchema.safeParse(replacement);
+    requireTransfer(parsed.success, "INVALID_REPLACEMENT_APPROVAL");
+    const approval = parsed.data;
+    requireTransfer(!approval.enabled || approval.destinationUserId === destinationOwner, "REPLACEMENT_OWNER_MISMATCH");
+    requireTransfer(destination.records.healthTargets.length <= 1, "DESTINATION_TARGETS_INVALID");
     requireTransfer(models.every((model) => destination.records[model].every((row) => row.userId === destinationOwner)), "DESTINATION_RECORD_OWNER_MISMATCH");
     const result: TransferPlan = {
-        counts: Object.fromEntries(models.map((model) => [model, { create: 0, skip: 0, conflict: 0 }])) as TransferPlan["counts"],
-        conflicts: [], mappings: [], creates: [],
+        counts: Object.fromEntries(models.map((model) => [model, {
+            create: 0, replace: 0, skip: 0, conflict: 0,
+        }])) as TransferPlan["counts"],
+        conflicts: [], mappings: [], creates: [], replacements: [],
     };
     for (const model of models) {
         for (const source of pkg.records[model]) {
@@ -69,10 +89,22 @@ export function planTransfer(pkg: TransferPackage, destinationOwner: string, des
                 return model === "healthTargets" || model === "financeSpendingPlan";
             });
             let conflict: string | undefined;
+            let replace = false;
             if (collision && collision.userId !== destinationOwner) conflict = "ID_OWNED_BY_ANOTHER_USER";
             else if (collision && (!existing || !("id" in existing) || existing.id !== id)) conflict = "ID_COLLISION";
-            else if (existing && model !== "expenseCategory" && comparable(model, existing) !== comparable(model, record)) {
-                conflict = model === "healthLog" ? "SAME_DATE_CONFLICT" : "EXISTING_RECORD_DIFFERS";
+            else if (model === "healthTargets" && approval.enabled &&
+                (!existing || !("id" in existing) || existing.id !== approval.recordId)) {
+                conflict = "HEALTH_TARGETS_REVIEW_STALE";
+            } else if (existing && model !== "expenseCategory" && comparable(model, existing) !== comparable(model, record)) {
+                if (model === "healthTargets" && approval.enabled) {
+                    if (healthTargetsFingerprint(existing) === approval.expectedSHA256) {
+                        replace = true;
+                    } else {
+                        conflict = "HEALTH_TARGETS_REVIEW_STALE";
+                    }
+                } else {
+                    conflict = model === "healthLog" ? "SAME_DATE_CONFLICT" : "EXISTING_RECORD_DIFFERS";
+                }
             }
             if (conflict) {
                 result.counts[model].conflict++;
@@ -81,8 +113,21 @@ export function planTransfer(pkg: TransferPackage, destinationOwner: string, des
             }
             const builtIn = model === "expenseCategory" && "name" in source &&
                 builtInExpenseCategories.some((name) => categoryNameKey(name) === categoryNameKey(source.name));
-            if (existing || builtIn) result.counts[model].skip++;
-            else {
+            if (replace && model === "healthTargets" && approval.enabled) {
+                // Only the values and source timestamp move; destination identity stays.
+                result.replacements.push({
+                    model: "healthTargets",
+                    record: {
+                        ...pkg.records.healthTargets[0],
+                        id: approval.recordId,
+                        userId: destinationOwner,
+                    },
+                    approval,
+                });
+                result.counts.healthTargets.replace++;
+            } else if (existing || builtIn) {
+                result.counts[model].skip++;
+            } else {
                 result.counts[model].create++;
                 result.creates.push({ model, record });
             }
@@ -95,15 +140,19 @@ export function planTransfer(pkg: TransferPackage, destinationOwner: string, des
     return result;
 }
 
-/** This interface intentionally has no update/delete/user/ledger operations. */
+/** No generic update/upsert/delete or auth/ledger operations. */
 export interface TransferWriter {
     create(action: CreateAction): Promise<void>;
+    replaceHealthTargets(action: ReplaceHealthTargetsAction): Promise<void>;
 }
 export async function executePlan(plan: TransferPlan, writer: TransferWriter, dryRun: boolean) {
     if (plan.conflicts.length && !dryRun) {
         throw new TransferError("UNRESOLVED_CONFLICTS", { counts: plan.counts, conflicts: plan.conflicts });
     }
     if (!dryRun) {
+        for (const action of plan.replacements) {
+            await writer.replaceHealthTargets(action);
+        }
         for (const action of plan.creates) {
             await writer.create(action);
         }

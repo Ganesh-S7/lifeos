@@ -54,6 +54,37 @@ test("local MySQL transfer preserves precision, skips reruns, rolls back failure
             assert.equal(records.healthTargets[0].updatedAt, pkg.records.healthTargets[0].updatedAt);
             const repeat = await importInTransaction(tx, pkg, fixtureId, email, false);
             assert.ok(approvedModels.every(model => repeat.counts[model].create === 0));
+            const targetId = records.healthTargets[0].id;
+            await tx.healthTargets.update({
+                where: { id: targetId },
+                data: {
+                    stepsPerDay: 123,
+                    carbsGramsPerDay: "111.00",
+                    updatedAt: new Date("2026-10-01T00:00:00.000Z"),
+                },
+            });
+            const reviewed = (await readApprovedRecords(tx, fixtureId)).healthTargets[0];
+            const approval = {
+                enabled: true,
+                destinationUserId: fixtureId,
+                recordId: targetId,
+                expectedSHA256: contracts.healthTargetsFingerprint(reviewed),
+            };
+            const replacementDryRun = await importInTransaction(tx, pkg, fixtureId, email, true, approval);
+            assert.equal(replacementDryRun.counts.healthTargets.replace, 1);
+            assert.equal(contracts.healthTargetsFingerprint(
+                (await readApprovedRecords(tx, fixtureId)).healthTargets[0]
+            ), approval.expectedSHA256);
+            const stale = { ...approval, expectedSHA256: "0".repeat(64) };
+            await assert.rejects(importInTransaction(tx, pkg, fixtureId, email, false, stale), /UNRESOLVED_CONFLICTS/);
+            const replacement = await importInTransaction(tx, pkg, fixtureId, email, false, approval);
+            assert.equal(replacement.counts.healthTargets.replace, 1);
+            const replaced = (await readApprovedRecords(tx, fixtureId)).healthTargets[0];
+            assert.deepEqual(replaced, {
+                ...pkg.records.healthTargets[0], id: targetId, userId: fixtureId,
+            });
+            assert.equal((await importInTransaction(tx, pkg, fixtureId, email, false, approval))
+                .counts.healthTargets.skip, 1);
             const changed = structuredClone(pkg);
             changed.records.healthLog[0].steps++;
             const conflict = await importInTransaction(tx, resign(changed), fixtureId, email, true);
@@ -69,21 +100,43 @@ test("local MySQL transfer preserves precision, skips reruns, rolls back failure
         // Real earlier inserts must also roll back when a later approved-model write fails.
         await assert.rejects(client.$transaction(async (tx) => {
             await tx.user.create({ data: { id: fixtureId, name: "Transfer rollback-only fixture", email } });
+            const existing = {
+                ...pkg.records.healthTargets[0],
+                id: `target-${fixtureId}`,
+                userId: fixtureId,
+                stepsPerDay: 123,
+                carbsGramsPerDay: "111.00",
+                updatedAt: "2026-10-01T00:00:00.000Z",
+            };
+            await tx.healthTargets.create({
+                data: { ...existing, updatedAt: new Date(existing.updatedAt) },
+            });
+            const approval = {
+                enabled: true, destinationUserId: fixtureId, recordId: existing.id,
+                expectedSHA256: contracts.healthTargetsFingerprint(existing),
+            };
             const failed = new Proxy(tx, {
                 get(target, property) {
                     if (property === "expenseCategory") return {
                         ...target.expenseCategory,
-                        create() { throw new Error("INJECTED_TRANSFER_WRITE_FAILURE"); },
+                        async create() {
+                            const updated = (await readApprovedRecords(tx, fixtureId)).healthTargets[0];
+                            assert.deepEqual(updated, {
+                                ...pkg.records.healthTargets[0], id: existing.id, userId: fixtureId,
+                            });
+                            assert.equal(await tx.healthLog.count({ where: { userId: fixtureId } }), 17);
+                            throw new Error("INJECTED_TRANSFER_WRITE_FAILURE");
+                        },
                     };
                     return Reflect.get(target, property);
                 },
             });
-            await importInTransaction(failed, pkg, fixtureId, email, false);
+            await importInTransaction(failed, pkg, fixtureId, email, false, approval);
         }, { isolationLevel: "Serializable", timeout: 40_000 }), /INJECTED_TRANSFER_WRITE_FAILURE/);
         assert.deepEqual(await counts(), baseline);
         assert.equal(contracts.sha256(contracts.canonical(await readApprovedRecords(client, sourceId))), beforeSource);
     } finally {
-        // No deletes, updates, migrations, or committed fixture creation.
+        // All fixture creates and target updates roll back; no deletes or migrations.
         await client.$disconnect();
     }
 });

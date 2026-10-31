@@ -1,14 +1,30 @@
-import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
+import type { HealthTargets, Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { formatUtcDateValue } from "../../utils/date";
 import {
-    canonical, fingerprint, models, normalizeEmail, recordCounts, recordSetSchema,
+    canonical, fingerprint, healthTargetsFingerprint, healthTargetsRecordSchema,
+    healthTargetsReplacementSchema, models, normalizeEmail, recordCounts, recordSetSchema,
     requiredMigrations, requireTransfer, schemaHash, sha256, validatePackage,
-    type Model, type Policy, type RecordSet, type TransferPackage,
+    type HealthTargetsReplacement, type Model, type Policy, type RecordSet, type TransferPackage,
 } from "./contracts";
 import { builtInExpenseCategories, categoryNameKey } from "../../../features/finance/utils/expense-categories";
-import { executePlan, mappedId, planTransfer, verifyOwner, type CreateAction } from "./plan";
+import {
+    executePlan, mappedId, planTransfer, verifyOwner,
+    type CreateAction, type ReplaceHealthTargetsAction,
+} from "./plan";
 
 type Transaction = Prisma.TransactionClient;
+
+function serializeHealthTargets(row: HealthTargets): RecordSet["healthTargets"][number] {
+    const decimal = (value: Prisma.Decimal | null) => value === null ? null : value.toFixed(2);
+    return {
+        ...row,
+        weightGoalKg: decimal(row.weightGoalKg),
+        proteinGramsPerDay: decimal(row.proteinGramsPerDay),
+        carbsGramsPerDay: decimal(row.carbsGramsPerDay),
+        fiberGramsPerDay: decimal(row.fiberGramsPerDay),
+        updatedAt: row.updatedAt.toISOString(),
+    };
+}
 
 /** Only approved models; strict export contracts reject unreviewed new fields. */
 export async function readApprovedRecords(tx: Transaction, userId: string): Promise<RecordSet> {
@@ -38,11 +54,7 @@ export async function readApprovedRecords(tx: Transaction, userId: string): Prom
             carbsGrams: money(row.carbsGrams), fiberGrams: money(row.fiberGrams),
             createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
         })),
-        healthTargets: targets.map((row) => ({
-            ...row, weightGoalKg: money(row.weightGoalKg), proteinGramsPerDay: money(row.proteinGramsPerDay),
-            carbsGramsPerDay: money(row.carbsGramsPerDay), fiberGramsPerDay: money(row.fiberGramsPerDay),
-            updatedAt: row.updatedAt.toISOString(),
-        })),
+        healthTargets: targets.map(serializeHealthTargets),
         monthlyFinanceSnapshot: snapshots.map((row) => ({
             ...row, categories: categoryAmounts(row.categories), total: row.total.toFixed(2),
             income: row.income.toFixed(2), left: row.left.toFixed(2),
@@ -156,7 +168,7 @@ export async function exportPackage(client: PrismaClient, policy: Policy, source
     }, { isolationLevel: "RepeatableRead", timeout: 30_000 });
 }
 
-/** No updates/upserts/deletes: a failed create rolls the whole transaction back. */
+/** Create-only boundary; HealthTargets replacement has its own narrow writer. */
 export async function createTransferredRecord(tx: Transaction, action: CreateAction) {
     const row = action.record;
     if (action.model === "healthLog" && "date" in row) {
@@ -183,6 +195,57 @@ export async function createTransferredRecord(tx: Transaction, action: CreateAct
     } else requireTransfer(false, "UNAPPROVED_MODEL");
 }
 
+/** Recheck the reviewed preimage, then compare-and-set only this owner's target. */
+export async function replaceHealthTargets(tx: Transaction, action: ReplaceHealthTargetsAction) {
+    requireTransfer(action.model === "healthTargets", "UNAPPROVED_MODEL");
+    const parsed = healthTargetsReplacementSchema.safeParse(action.approval);
+    const record = healthTargetsRecordSchema.safeParse(action.record);
+    requireTransfer(parsed.success && parsed.data.enabled && record.success, "INVALID_REPLACEMENT_APPROVAL");
+    const approval = parsed.data;
+    const source = record.data;
+    requireTransfer(
+        source.id === approval.recordId && source.userId === approval.destinationUserId,
+        "REPLACEMENT_OWNER_MISMATCH",
+    );
+
+    const current = await tx.healthTargets.findUnique({
+        where: { userId: approval.destinationUserId },
+    });
+    requireTransfer(
+        current && current.id === approval.recordId &&
+            healthTargetsFingerprint(serializeHealthTargets(current)) === approval.expectedSHA256,
+        "HEALTH_TARGETS_REVIEW_STALE",
+    );
+
+    const changed = await tx.healthTargets.updateMany({
+        where: {
+            id: current.id,
+            userId: current.userId,
+            updatedAt: current.updatedAt,
+            weightGoalKg: current.weightGoalKg,
+            stepsPerDay: current.stepsPerDay,
+            sleepMinutesPerDay: current.sleepMinutesPerDay,
+            waterMlPerDay: current.waterMlPerDay,
+            caloriesKcalPerDay: current.caloriesKcalPerDay,
+            proteinGramsPerDay: current.proteinGramsPerDay,
+            carbsGramsPerDay: current.carbsGramsPerDay,
+            fiberGramsPerDay: current.fiberGramsPerDay,
+        },
+        data: {
+            weightGoalKg: source.weightGoalKg,
+            stepsPerDay: source.stepsPerDay,
+            sleepMinutesPerDay: source.sleepMinutesPerDay,
+            waterMlPerDay: source.waterMlPerDay,
+            caloriesKcalPerDay: source.caloriesKcalPerDay,
+            proteinGramsPerDay: source.proteinGramsPerDay,
+            carbsGramsPerDay: source.carbsGramsPerDay,
+            fiberGramsPerDay: source.fiberGramsPerDay,
+            updatedAt: new Date(source.updatedAt),
+        },
+    });
+    requireTransfer(changed.count === 1, "HEALTH_TARGETS_REVIEW_STALE");
+}
+
 export async function inspectDestination(tx: Transaction, pkg: TransferPackage, destinationId: string) {
     const records = await readApprovedRecords(tx, destinationId);
     const categoryKeys = records.expenseCategory.map((row) => categoryNameKey(row.name));
@@ -203,11 +266,17 @@ export async function inspectDestination(tx: Transaction, pkg: TransferPackage, 
     return { records, identifiers };
 }
 
-export async function importInTransaction(tx: Transaction, pkg: TransferPackage, destinationId: string, email: string, dryRun: boolean) {
+export async function importInTransaction(
+    tx: Transaction, pkg: TransferPackage, destinationId: string, email: string,
+    dryRun: boolean, replacement: HealthTargetsReplacement = { enabled: false },
+) {
     verifyOwner(await ownerMatches(tx, destinationId, email), destinationId, pkg.manifest.source.email);
     requireTransfer(normalizeEmail(email) === pkg.manifest.source.email, "OWNER_MAPPING_REJECTED");
-    const plan = planTransfer(pkg, destinationId, await inspectDestination(tx, pkg, destinationId));
-    const report = await executePlan(plan, { create: (action) => createTransferredRecord(tx, action) }, dryRun);
+    const plan = planTransfer(pkg, destinationId, await inspectDestination(tx, pkg, destinationId), replacement);
+    const report = await executePlan(plan, {
+        create: (action) => createTransferredRecord(tx, action),
+        replaceHealthTargets: (action) => replaceHealthTargets(tx, action),
+    }, dryRun);
     return { ...report, packageSHA256: pkg.sha256 };
 }
 
@@ -216,7 +285,7 @@ export async function importPackage(client: PrismaClient, pkg: TransferPackage, 
     validatePackage(pkg, policy);
     return client.$transaction(async (tx) => {
         await verifySchema(tx, database);
-        return importInTransaction(tx, pkg, destinationId, email, dryRun);
+        return importInTransaction(tx, pkg, destinationId, email, dryRun, policy.healthTargetsReplacement);
     }, { isolationLevel: "Serializable", timeout: 30_000 });
 }
 

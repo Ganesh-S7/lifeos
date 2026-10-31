@@ -5,6 +5,24 @@ import { canonical, fingerprint, normalizeEmail, requireTransfer, type Policy, t
 export type DestinationEnvironment = "production" | "local-test";
 const loopback = (host: string) => /^(?:(?:[\w-]+\.)*localhost\.?|127\.\d+\.\d+\.\d+|\[::1\]|0\.0\.0\.0|\[::\])$/i.test(host);
 
+/** Policy gates are independent of credentials and run before any connection. */
+export function assertImportPolicy(
+    policy: Policy,
+    environment: DestinationEnvironment,
+    apply: boolean,
+    processEnvironment: boolean,
+) {
+    requireTransfer(!apply || !policy.readOnly, "READ_ONLY_POLICY");
+    if (processEnvironment) {
+        requireTransfer(environment === "production", "PROCESS_ENV_PRODUCTION_IMPORT_REQUIRED");
+        requireTransfer(policy.destinations.production.length === 1, "SINGLE_PRODUCTION_DESTINATION_REQUIRED");
+    }
+    if (apply && environment === "production") {
+        requireTransfer(policy.allowProductionApply === true, "PRODUCTION_APPLY_POLICY_REQUIRED");
+        requireTransfer(policy.destinations.production.length === 1, "SINGLE_PRODUCTION_DESTINATION_REQUIRED");
+    }
+}
+
 /** No dotenv loading, file fallback, normalization, or secret persistence. */
 export function injectedProductionEnvironment(input: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     const result: NodeJS.ProcessEnv = { NODE_ENV: "production" };

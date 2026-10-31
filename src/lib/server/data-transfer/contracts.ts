@@ -10,10 +10,17 @@ export const models = [
 ] as const;
 export type Model = typeof models[number];
 
+export interface OperationCounts {
+    create: number;
+    replace: number;
+    skip: number;
+    conflict: number;
+}
+
 export class TransferError extends Error {
     readonly code: string;
     readonly report?: {
-        counts: Record<string, { create: number; skip: number; conflict: number }>;
+        counts: Record<string, OperationCounts>;
         conflicts: { model: string; code: string }[];
     };
 
@@ -66,7 +73,7 @@ const log = z.strictObject({
     row.weightKg, row.steps, row.sleepMinutes, row.waterMl, row.caloriesKcal,
     row.proteinGrams, row.carbsGrams, row.fiberGrams,
 ].some((value) => value !== null));
-const target = z.strictObject({
+export const healthTargetsRecordSchema = z.strictObject({
     ...owned, updatedAt: time, weightGoalKg: weight, stepsPerDay: integer,
     sleepMinutesPerDay: integer.refine((value) => value === null || value <= 1440),
     waterMlPerDay: integer, caloriesKcalPerDay: integer,
@@ -88,7 +95,7 @@ const category = z.strictObject({
 
 export const recordSetSchema = z.strictObject({
     healthLog: z.array(log).max(100_000),
-    healthTargets: z.array(target).length(1),
+    healthTargets: z.array(healthTargetsRecordSchema).length(1),
     monthlyFinanceSnapshot: z.array(snapshot).length(11),
     financeSpendingPlan: z.array(plan).length(1),
     expenseCategory: z.array(category).max(100),
@@ -104,9 +111,31 @@ export const endpointSchema = z.strictObject({
     host: z.string().min(1).max(253).refine((host) => !/[\s/@?#:]/.test(host) || host === "[::1]"),
     port: z.number().int().min(1).max(65535), database: z.string().regex(/^[\w-]{1,64}$/),
 });
+export const healthTargetsReplacementSchema = z.discriminatedUnion("enabled", [
+    z.strictObject({ enabled: z.literal(false) }),
+    z.strictObject({
+        enabled: z.literal(true),
+        destinationUserId: id,
+        recordId: id,
+        expectedSHA256: z.string().regex(/^[a-f0-9]{64}$/),
+    }),
+]);
+export type HealthTargetsReplacement = z.infer<typeof healthTargetsReplacementSchema>;
+
+/** Includes identity, every nullable target field and the original timestamp. */
+export function healthTargetsFingerprint(record: unknown): string {
+    return sha256(canonical({
+        version: 1,
+        model: "healthTargets",
+        record: healthTargetsRecordSchema.parse(record),
+    }));
+}
+
 export const policySchema = z.strictObject({
     version: z.literal(1), source: endpointSchema,
     readOnly: z.boolean().default(false),
+    allowProductionApply: z.boolean().default(false),
+    healthTargetsReplacement: healthTargetsReplacementSchema.default({ enabled: false }),
     destinations: z.strictObject({
         production: z.array(endpointSchema).max(10),
         "local-test": z.array(endpointSchema).max(10),

@@ -72,3 +72,36 @@ export function fixture() {
     const pkg = resign({ manifest, records });
     return { pkg: contracts.validatePackage(pkg, policy), policy };
 }
+
+export function replacementFixture() {
+    const { pkg, policy } = fixture();
+    const existing = {
+        ...pkg.records.healthTargets[0],
+        id: "existing-health-target",
+        userId: destinationId,
+        weightGoalKg: "64.00",
+        stepsPerDay: 6000,
+        sleepMinutesPerDay: 420,
+        waterMlPerDay: 1800,
+        caloriesKcalPerDay: 2200,
+        proteinGramsPerDay: "80.00",
+        carbsGramsPerDay: "200.00",
+        fiberGramsPerDay: "15.00",
+        updatedAt: "2026-10-01T00:00:00.000Z",
+    };
+    const approval = {
+        enabled: true,
+        destinationUserId: destinationId,
+        recordId: existing.id,
+        expectedSHA256: contracts.healthTargetsFingerprint(existing),
+    };
+    const destination = emptyDestination();
+    destination.records.healthTargets.push(existing);
+    return {
+        pkg,
+        existing,
+        destination,
+        approval,
+        policy: contracts.policySchema.parse({ ...policy, healthTargetsReplacement: approval }),
+    };
+}

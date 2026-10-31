@@ -3,8 +3,8 @@
 For the current **read-only Production phase**, use
 [the process-environment preflight guide](production-read-only-preflight.md).
 Do not use the pulled `[SENSITIVE]` file as a database configuration source.
-The file-based Production write examples below describe a future separately
-authorized cutover; they do not apply to the read-only process-environment mode.
+The Production write examples describe a future separately authorized cutover;
+tool support for apply does not authorize executing it during implementation.
 
 This is an operator CLI, not an application endpoint or a whole-database clone.
 No schema change is required. The old local-only monthly importer is unchanged;
@@ -84,7 +84,8 @@ this package never deletes any category or historical label.
   ID/owner remapping is excluded. Same-date differing metadata or values is a
   conflict, not an automatic merge. Exact existing daily records can be skipped
   even if their IDs differ; the internal reconciliation map uses the existing ID.
-- Existing targets must match exactly, including updatedAt; otherwise stop.
+- Existing targets match exactly, including updatedAt, unless the private policy
+  explicitly approves the HealthTargets-only replacement described below.
 - Snapshot/plan equality compares financial content; existing destination
   metadata is preserved on identical skips. A differing plan, including a NULL
   reference income, is a conflict. Nothing initializes or replaces it silently.
@@ -92,11 +93,62 @@ this package never deletes any category or historical label.
   Existing equivalent definitions are skipped and mapped to their existing IDs.
   Invalid/duplicate destination normalization is rejected.
 
-There is no update/upsert/delete path. All conflicts are collected before apply.
+There is no generic update/upsert/delete path. The sole exception is an explicitly
+reviewed, owner-scoped HealthTargets replacement. All conflicts are collected before apply.
 Apply runs in one Serializable Prisma transaction. Concurrent unique/serialization
 failures roll back the whole operation and return a sanitized conflict code;
 there are no retries. A later app edit can make a rerun conflict: review it,
 do not overwrite the user's newer values.
+
+## Reviewed HealthTargets replacement
+
+Policies default to `healthTargetsReplacement: { "enabled": false }` and
+`allowProductionApply: false`. Existing policies and source packages need no
+rewriting; the package format, manifest counts and digest remain unchanged.
+
+After a separately authorized read-only inspection, keep the destination target
+record and its ID private. Use `readApprovedRecords(tx, destinationUserId)` to
+obtain the canonical target representation, then `healthTargetsFingerprint(row)`
+from `contracts.ts`. Do not hash raw Prisma Decimal/Date objects or hand-format
+values. The fingerprint includes the destination ID, user ID, all eight nullable
+fields and updatedAt. Do not print measurements or put approval files outside the
+protected transfer directory.
+
+The following is a template, not an executable policy:
+
+```json
+{
+  "healthTargetsReplacement": {
+    "enabled": true,
+    "destinationUserId": "<verified destination user ID>",
+    "recordId": "<inspected destination target ID>",
+    "expectedSHA256": "<64 lowercase hex characters from healthTargetsFingerprint>"
+  }
+}
+```
+
+Add this field to the existing complete policy; it does not replace endpoint,
+source, count or category approvals. The planner reports `replace: 1` only when
+the current record ID and fingerprint match the reviewed preimage and the values
+differ. Missing/recreated/edited records conflict. An exact already-imported target
+with the approved ID skips on rerun without reusing the old preimage for a write.
+The destination ID/userId remain unchanged. All eight values, including NULLs,
+and the source updatedAt replace the destination values; this is not a merge and
+updatedAt is not the time of the transfer. No other model can be replaced.
+
+Earlier one-time schema-audit snippets that pinned `database.ts` will reject its
+new fingerprint. Re-review/update those snippets separately; do not bypass their
+baseline guard. This does not affect the unchanged source package or Prisma schema.
+
+Apply rechecks the preimage inside the existing Serializable transaction and uses
+a compare-and-set predicate covering identity, timestamp and all existing values.
+Exactly one row must match. Replacement and all creates commit or roll back
+together; any other-model conflict blocks every mutation. There are no retries.
+
+Every model now reports `create`, `replace`, `skip`, `conflict`. For an otherwise
+empty destination with differing existing targets, the plan is 41 creates and one
+replacement; actual inspection may find skips/conflicts. No target values or
+replacement approval identifiers are added to CLI output.
 
 ## Private files and environment policy
 
@@ -143,11 +195,12 @@ For Production, copy the local policy to `policy.production.json` and add the
 Match them against Vercel's Production configuration and the intended Aiven
 service. Never infer a role from `DATABASE_URL` or a filename. Stop if uncertain.
 
-Put the actual destination DATABASE_URL, `DATABASE_SSL_MODE=verify`, and valid
-provider PEM DATABASE_SSL_CA in `.lifeos-transfer/production.env`, using the
-project's existing dotenv PEM convention. An optional NODE_ENV must be correct.
-No credentials are command-line arguments. The CLI reads only the explicitly
-chosen file, with **no process-env/Next/dotenv fallback** for connection inputs.
+Prefer the process-environment workflow in `production-read-only-preflight.md`;
+it requires no plaintext credential file. The pulled Production file containing
+`[SENSITIVE]` is unusable and must not be replaced with guessed connection data.
+The existing `--env-file` mode reads only its explicitly selected protected file,
+with **no process-env/Next/dotenv fallback** for connection inputs. Credentials
+are never command-line arguments. Do not create a credential file for this task.
 URL query overrides are rejected. Production requires remote, allowlisted
 host/port/database and verified chain/hostname/CA using `databaseAdapterOptions`.
 The existing 10-second timeout and pool limit 5 remain unchanged. There is no
@@ -179,6 +232,8 @@ node scripts/transfer-lifeos-data.mjs export --environment local --env-file .env
 # Read-only Production preview, only after target/identity/schema confirmation.
 node scripts/transfer-lifeos-data.mjs import --environment production --env-file .lifeos-transfer/production.env --policy .lifeos-transfer/policy.production.json --package $Package --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --dry-run
 
+# Future file-mode apply also requires a separately reviewed policy with
+# readOnly:false and allowProductionApply:true; never repurpose a read-only policy.
 # Copy the digest of THIS saved, reviewed package from its preview.
 $ReviewedSHA256 = '<reviewed packageSHA256>'
 node scripts/transfer-lifeos-data.mjs import --environment production --env-file .lifeos-transfer/production.env --policy .lifeos-transfer/policy.production.json --package $Package --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --apply --confirm-owner $DestinationOwnerId --confirm-sha256 $ReviewedSHA256 --confirm-production-write
@@ -187,10 +242,15 @@ node scripts/transfer-lifeos-data.mjs import --environment production --env-file
 node scripts/transfer-lifeos-data.mjs import --environment production --env-file .lifeos-transfer/production.env --policy .lifeos-transfer/policy.production.json --package $Package --source-owner-id $SourceOwnerId --destination-owner-id $DestinationOwnerId --owner-email $OwnerEmail --dry-run
 ```
 
+Production apply in either credential mode requires an explicit
+`allowProductionApply:true`, `readOnly:false` policy with exactly one approved
+Production endpoint, plus all existing owner/digest/Production confirmations.
+No policy in `.lifeos-transfer/` was modified or enabled by this implementation.
+
 Dry-run uses SELECT-only application operations and never invokes a mutation
 delegate or DDL. Reports contain counts, safe conflict codes and package digest,
-not measurements, SQL, connection URLs or exceptions. `create` means **planned**
-creates in dry-run and completed creates in a successful apply. Exit 0 means
+not measurements, SQL, connection URLs or exceptions. `create`/`replace` mean
+**planned** operations in dry-run and completed operations in a successful apply. Exit 0 means
 success; dry-run conflicts return 2; rejected/failed operations return 1. A
 conflicting apply returns counts/codes with `applied:false` and performs no writes.
 Export dry-run generates a fresh export timestamp/digest; confirm the saved
@@ -267,7 +327,8 @@ entries. Old app rollback is unsafe once new Untracked records have NULL account
   explicit confirmation, redaction and artifact exclusion.
 - `tests/data-transfer.mysql.test.mjs`: opt-in real loopback `lifeos` test, with
   synthetic fixtures created only inside transactions that **always roll back**.
-  No delete/cleanup, schema changes or committed fixture writes. Verifies all
+  No delete/cleanup, schema changes or committed fixture writes. Target updates
+  occur only on synthetic records inside transactions that roll back. Verifies all
   models after dry-run, successful in-transaction creates/reruns, conflicts,
   late write failure rollback, real source hashes and protected global counts.
   Use a quiet local database; never run against Production:
