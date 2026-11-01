@@ -123,7 +123,7 @@ test("conflict after staged transaction/history writes commits neither and does 
     const result = await request("transactions", "POST");
     assert.deepEqual(result, { status: 409, body: conflictBody });
     assert.equal(attempts, 1);
-    assert.deepEqual(db.options, [{ isolationLevel: "Serializable" }]);
+    assert.deepEqual(db.options, [{ isolationLevel: "Serializable", timeout: 15_000 }]);
     assert.ok(db.calls.some((call) => call.method === "financeTransaction.create"));
     assert.ok(db.calls.some((call) => call.method === "financialPositionSnapshot.create"));
     assert.deepEqual(db.records, original);

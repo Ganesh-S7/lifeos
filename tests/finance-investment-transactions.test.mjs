@@ -126,7 +126,7 @@ test("trade creates store one session-owned row with server metadata and exact o
             { holding: type === "investment_purchase" ? "150.25" : "49.75" });
         assert.deepEqual(db.records.accounts, original.accounts);
         assert.deepEqual(db.records.investments, original.investments);
-        assert.deepEqual(db.options, [{ isolationLevel: "Serializable" }]);
+        assert.deepEqual(db.options, [{ isolationLevel: "Serializable", timeout: 15_000 }]);
         assert.equal(db.calls.filter((call) => call.method === "financeTransaction.create").length, 1);
         const position = db.records.positionHistory[0];
         assert.equal(position.bank.plus(position.investments).minus(position.debt).toString(), "180");
@@ -503,7 +503,7 @@ test("trade mutation, entity-read, ledger-read and history-write failures roll b
                     assert.equal(result.body.error, "INTERNAL_SERVER_ERROR");
                     assert.equal(JSON.stringify(result.body).includes("PRIVATE_DATABASE_DIAGNOSTIC"), false);
                     assertUnchanged(db, original, failAt !== "financialPositionSnapshot.create");
-                    assert.deepEqual(db.options, [{ isolationLevel: "Serializable" }]);
+                    assert.deepEqual(db.options, [{ isolationLevel: "Serializable", timeout: 15_000 }]);
                 }
             }
         }

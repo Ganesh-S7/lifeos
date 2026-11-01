@@ -153,5 +153,6 @@ export async function mutateTransaction(
         return dto ? { transaction: dto } : { success: true as const };
     }, {
         isolationLevel: "Serializable",
+        timeout: 15_000,
     });
 }

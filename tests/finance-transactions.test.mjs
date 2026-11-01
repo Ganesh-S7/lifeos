@@ -235,9 +235,22 @@ test("create income and expense use session ownership, exact money and date-only
         assert.equal(db.records.transactions[0].userId, userId);
         assert.equal(db.records.transactions[0].date.toISOString(), "2026-10-01T00:00:00.000Z");
         assert.equal(db.records.transactions[0].amount.toString(), "50.25");
-        assert.deepEqual(db.options, [{ isolationLevel: "Serializable" }]);
+        assert.deepEqual(db.options, [{ isolationLevel: "Serializable", timeout: 15_000 }]);
         assert.equal(db.records.positionHistory[0].bank.toString(), input.type === "income" ? "150.25" : "49.75");
     }
+});
+
+test("transaction mutations allow 15 seconds with Serializable isolation and default maxWait", async () => {
+    const db = setup();
+    const created = await request("POST", expense);
+    assert.equal(created.status, 201);
+    const id = created.body.transaction.id;
+    assert.equal((await request("PUT", { ...expense, amount: 25 }, id)).status, 200);
+    assert.equal((await request("DELETE", undefined, id)).status, 200);
+    assert.deepEqual(db.options, Array.from({ length: 3 }, () => ({
+        isolationLevel: "Serializable",
+        timeout: 15_000,
+    })));
 });
 
 test("missing/foreign accounts are rejected on create and replacement", async () => {

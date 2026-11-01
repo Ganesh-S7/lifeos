@@ -119,7 +119,7 @@ test("create stores one session-owned transfer and conserves bank assets without
     assert.equal(row.date.toISOString(), "2026-10-01T00:00:00.000Z");
     assertBalances(db, { bank: "49.75", destination: "50.25" });
     assert.deepEqual(db.records.accounts, original.accounts);
-    assert.deepEqual(db.options, [{ isolationLevel: "Serializable" }]);
+    assert.deepEqual(db.options, [{ isolationLevel: "Serializable", timeout: 15_000 }]);
     assert.equal(db.calls.filter((call) => call.method === "financeTransaction.create").length, 1);
     assert.equal(db.records.positionHistory.length, 1);
     assert.equal(db.records.positionHistory[0].bank.toString(), "100");
@@ -440,7 +440,7 @@ test("transfer failures roll back staged mutations with no committed history and
                 assert.equal(JSON.stringify(result.body).includes("PRIVATE_DATABASE_DIAGNOSTIC"), false);
                 assertUnchanged(db, original, failAt !== "financialPositionSnapshot.create");
                 assert.equal(db.options.length, 1);
-                assert.deepEqual(db.options[0], { isolationLevel: "Serializable" });
+                assert.deepEqual(db.options[0], { isolationLevel: "Serializable", timeout: 15_000 });
             }
         }
         assert.equal(errors.length, attempts);
