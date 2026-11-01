@@ -132,7 +132,7 @@ export function HealthProgress({
             className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5"
             aria-labelledby="health-progress-title"
         >
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 md:flex md:items-center md:justify-between md:gap-4">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 md:flex md:items-center md:justify-between md:gap-4">
                 {/* Date navigation */}
                 <div className="contents md:block">
                     <h2
@@ -142,22 +142,24 @@ export function HealthProgress({
                         {isToday ? "Today's progress" : "Daily progress"}
                     </h2>
 
-                    <div className="col-span-2 row-start-2 mt-2 flex items-center gap-2">
+                    <div className="col-span-2 row-start-2 mt-1 flex min-w-0 items-center gap-1 md:mt-2 md:gap-2">
                         <button
                             type="button"
                             aria-label="View previous day"
                             onClick={() => navigateDay(-1)}
-                            className="inline-flex size-11 sm:size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                            className="group inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 md:size-8 md:border md:border-border md:hover:bg-surface-hover"
                         >
-                            <ChevronLeft
-                                className="size-4"
-                                aria-hidden="true"
-                            />
+                            <span className="inline-flex size-7 items-center justify-center rounded-md border border-border group-hover:bg-surface-hover md:contents">
+                                <ChevronLeft
+                                    className="size-3.5 md:size-4"
+                                    aria-hidden="true"
+                                />
+                            </span>
                         </button>
 
                         <span
                             aria-live="polite"
-                            className="min-w-28 text-center text-sm font-medium text-text-primary"
+                            className="min-w-0 flex-1 whitespace-nowrap text-center text-xs font-medium text-text-primary md:min-w-28 md:flex-none md:text-sm"
                         >
                             {displayDate}
                         </span>
@@ -167,12 +169,14 @@ export function HealthProgress({
                             aria-label="View next day"
                             onClick={() => navigateDay(1)}
                             disabled={isToday || isFutureDate}
-                            className="inline-flex size-11 sm:size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                            className="group inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-40 md:size-8 md:border md:border-border md:hover:bg-surface-hover"
                         >
-                            <ChevronRight
-                                className="size-4"
-                                aria-hidden="true"
-                            />
+                            <span className="inline-flex size-7 items-center justify-center rounded-md border border-border group-hover:bg-surface-hover md:contents">
+                                <ChevronRight
+                                    className="size-3.5 md:size-4"
+                                    aria-hidden="true"
+                                />
+                            </span>
                         </button>
 
                         {!isToday && (
@@ -181,7 +185,7 @@ export function HealthProgress({
                                 onClick={() =>
                                     onSelectedDateChange(todayDate)
                                 }
-                                className="ml-1 min-h-11 md:min-h-0 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-hover"
+                                className="ml-1 min-h-11 shrink-0 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-hover md:min-h-0"
                             >
                                 Today
                             </button>
@@ -195,11 +199,11 @@ export function HealthProgress({
 
                 <Button
                     variant="outline"
-                    className="col-start-2 row-start-1"
+                    className="col-start-2 row-start-1 max-md:h-11 max-md:gap-1.5 max-md:border-transparent max-md:px-2 max-md:text-xs"
                     onClick={onManageTargets}
                 >
                     <Settings2
-                        className="mr-2 size-4"
+                        className="size-3.5 md:mr-2 md:size-4"
                         aria-hidden="true"
                     />
                     Edit targets

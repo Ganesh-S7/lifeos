@@ -119,6 +119,11 @@ const trendRanges: {
         },
     ];
 
+const compactAxisFormatter = new Intl.NumberFormat("en-IN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+});
+
 function getMetricValue(
     point: HealthAnalyticsPoint,
     key: AnalyticsMetricKey,
@@ -245,6 +250,8 @@ export function HealthAnalytics({
     const [trendDays, setTrendDays] =
         useState<TrendRange>(30);
 
+    const [compactAxis, setCompactAxis] = useState(false);
+
     const trendData = useMemo(
         () => getHealthAnalyticsTrend(logs, new Date(), trendDays),
         [logs, trendDays],
@@ -358,7 +365,7 @@ export function HealthAnalytics({
             <div
                 role="group"
                 aria-label="Select a health metric"
-                className="flex flex-nowrap gap-2 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0"
+                className="mt-5 grid min-w-0 grid-cols-4 gap-2 pb-2 md:mt-0 md:flex md:flex-wrap md:overflow-visible md:pb-0"
             >
                 {analyticsMetrics.map((metric) => {
                     const isActive =
@@ -372,7 +379,7 @@ export function HealthAnalytics({
                             onClick={() =>
                                 setSelectedMetricKey(metric.key)
                             }
-                            className={`shrink-0 min-h-11 sm:min-h-0 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${isActive
+                            className={`min-w-0 shrink-0 min-h-11 whitespace-nowrap rounded-lg border px-1 py-2 text-xs font-medium transition-colors md:min-h-0 md:px-3 md:text-sm ${isActive
                                     ? "border-primary bg-surface-elevated text-text-primary"
                                     : "border-border text-text-secondary hover:bg-surface-hover hover:text-text-primary"
                                 }`}
@@ -394,6 +401,7 @@ export function HealthAnalytics({
             <div className="mt-5">
                 <h3 className="text-sm font-medium text-text-primary">
                     {activeMetric.description}
+                    <span className="md:hidden"> ({activeMetric.unit})</span>
                 </h3>
 
                 {hasAnyData && !hasEnoughData && (
@@ -409,6 +417,7 @@ export function HealthAnalytics({
                             width="100%"
                             height="100%"
                             minWidth={0}
+                            onResize={(width) => setCompactAxis(width < 480)}
                         >
                             <AreaChart
                                 data={chartData}
@@ -478,16 +487,15 @@ export function HealthAnalytics({
                                     tickCount={5}
                                     axisLine={false}
                                     tickLine={false}
-                                    width={100}
+                                    width={compactAxis ? 48 : 100}
                                     tick={{
                                         fontSize: 11,
                                         fill: "var(--text-secondary)",
                                     }}
                                     tickFormatter={(value: number) =>
-                                        formatMetricValue(
-                                            value,
-                                            activeMetric,
-                                        )
+                                        compactAxis
+                                            ? compactAxisFormatter.format(value)
+                                            : formatMetricValue(value, activeMetric)
                                     }
                                 />
 
