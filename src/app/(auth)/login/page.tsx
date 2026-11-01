@@ -72,8 +72,8 @@ export default function LoginPage() {
     }
 
     return (
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-7">
-            <div className="mb-7">
+        <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-7">
+            <div className="mb-5 sm:mb-7">
                 <p className="text-sm font-medium text-primary">
                     WELCOME BACK
                 </p>
@@ -90,7 +90,7 @@ export default function LoginPage() {
             <form
                 noValidate
                 onSubmit={handleSubmit(onSubmit)}
-                className="space-y-4"
+                className="space-y-3 sm:space-y-4"
                 aria-busy={isSubmitting}
             >
                 <Input
@@ -156,7 +156,7 @@ export default function LoginPage() {
                 </Button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-text-secondary">
+            <p className="mt-5 text-center text-sm text-text-secondary sm:mt-6">
                 Don&apos;t have an account?{" "}
                 <Link
                     href="/signup"

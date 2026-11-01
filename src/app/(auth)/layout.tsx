@@ -18,9 +18,9 @@ function BrandLogo() {
         <Link
             href="/"
             aria-label="LifeOS home"
-            className="inline-flex w-fit items-center gap-3"
+            className="inline-flex w-fit items-center gap-2.5 lg:gap-3"
         >
-            <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground lg:size-10">
                 <Activity
                     size={22}
                     strokeWidth={2.2}
@@ -43,7 +43,7 @@ function BrandLogo() {
 
 function ProductPreview() {
     return (
-        <div className="mt-8 grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-2 lg:mt-10">
+        <div className="mt-8 hidden max-w-lg grid-cols-1 gap-3 sm:grid-cols-2 lg:mt-10 lg:grid">
             {/* Finance preview */}
             <div className="rounded-2xl border border-border bg-surface p-4 transition-colors hover:bg-surface-hover">
                 <div className="flex items-center gap-3">
@@ -136,13 +136,13 @@ export default function AuthLayout({
     return (
         <div className="min-h-screen bg-background text-text-primary lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
             {/* Branding and illustration */}
-            <aside className="relative isolate flex flex-col overflow-hidden border-b border-border bg-surface-subtle px-5 py-6 sm:px-8 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-10 lg:py-9 xl:px-14">
+            <aside className="relative isolate flex flex-col overflow-hidden border-b border-border bg-surface-subtle px-4 py-4 sm:px-8 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-10 lg:py-9 xl:px-14">
                 <div className="relative">
                     <BrandLogo />
                 </div>
 
-                <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col justify-center py-9 lg:py-12">
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary">
+                <div className="relative mx-auto mt-4 flex w-full max-w-xl flex-1 flex-col justify-center lg:mt-0 lg:py-12">
+                    <div className="hidden w-fit items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary lg:inline-flex">
                         <Sparkles
                             size={14}
                             className="text-text-muted"
@@ -152,29 +152,31 @@ export default function AuthLayout({
                         A little more clarity, every day
                     </div>
 
-                    <h2 className="mt-6 max-w-lg text-3xl font-semibold leading-tight tracking-tight text-text-primary sm:text-4xl xl:text-5xl">
+                    <h2 className="max-w-lg text-xl font-semibold leading-tight tracking-tight text-text-primary sm:text-2xl lg:mt-6 lg:text-4xl xl:text-5xl">
                         Make room for{" "}
                         <span className="text-text-primary">
                             what matters.
                         </span>
                     </h2>
 
-                    <p className="mt-4 max-w-md text-sm leading-7 text-text-secondary sm:text-base">
+                    <p className="mt-2 max-w-md text-sm leading-6 text-text-secondary sm:text-base lg:mt-4 lg:leading-7">
                         Bring your finances and well-being together.
-                        Track your progress, understand your habits,
-                        and make more intentional decisions.
+                        <span className="hidden lg:inline">
+                            {" "}Track your progress, understand your habits,
+                            and make more intentional decisions.
+                        </span>
                     </p>
 
                     <ProductPreview />
                 </div>
 
-                <footer className="relative text-xs text-text-secondary">
+                <footer className="relative hidden text-xs text-text-secondary lg:block">
                     A calmer way to manage everyday life.
                 </footer>
             </aside>
 
             {/* Form panel */}
-            <main className="flex min-w-0 items-center justify-center px-4 py-8 sm:px-8 lg:min-h-screen lg:px-10 xl:px-14">
+            <main className="flex min-w-0 items-center justify-center px-4 py-4 sm:px-8 lg:min-h-screen lg:py-8 lg:px-10 xl:px-14">
                 <div className="w-full max-w-107.5">
                     {children}
                 </div>
