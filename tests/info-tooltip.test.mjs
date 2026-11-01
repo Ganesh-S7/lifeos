@@ -15,13 +15,14 @@ globalThis[Symbol.for(key)] = state;
 const ref = `globalThis[Symbol.for(${JSON.stringify(key)})]`;
 state.hooks = {
     useState(initial) {
-        const index = state.index++;
-        if (!(index in state.values)) state.values[index] = initial;
-        return [state.values[index], (value) => { state.values[index] = value; }];
+        const instance = state.current;
+        const index = instance.index++;
+        if (!(index in instance.values)) instance.values[index] = initial;
+        return [instance.values[index], (value) => { instance.values[index] = value; }];
     },
     useRef(initial) { return state.hooks.useState({ current: initial })[0]; },
-    useId() { return "info-description"; },
-    useEffect(setup) { state.cleanup ??= setup(); },
+    useId() { return state.current.id; },
+    useEffect(setup) { state.current.cleanup ??= setup(); },
 };
 registerHooks({
     resolve(specifier, context, nextResolve) {
@@ -51,8 +52,14 @@ registerHooks({
     },
 });
 const { InfoTooltip } = await import(target);
-function render() {
-    state.index = 0;
+function instance(id) {
+    const value = { id, index: 0, values: [], cleanup: null };
+    state.instances.push(value);
+    return value;
+}
+function render(current = state.default) {
+    state.current = current;
+    current.index = 0;
     return InfoTooltip({ label: "About weight", children: "Latest recorded weight and target." });
 }
 function nodes(tree) {
@@ -66,9 +73,9 @@ function hoverTarget(tree) {
     return nodes(tree).find((node) => node.type === "span" && node.props.onPointerEnter);
 }
 beforeEach(() => {
-    state.values = [];
-    state.index = 0;
-    state.cleanup = null;
+    for (const current of state.instances ?? []) current.cleanup?.();
+    state.instances = [];
+    state.default = instance("info-description");
 });
 
 test("information controls have an accessible label, description and nonmodal themed popover", () => {
@@ -90,13 +97,13 @@ test("mouse hover opens the explanation and allows movement into the popover bef
     let tree = render();
     hoverTarget(tree).props.onPointerEnter({ pointerType: "mouse" });
     assert.equal(render().props.open, true);
-    hoverTarget(tree).props.onPointerLeave();
+    hoverTarget(tree).props.onPointerLeave({ pointerType: "mouse" });
     t.mock.timers.tick(100);
     find(tree, "Content").props.onPointerEnter();
     t.mock.timers.tick(200);
     assert.equal(render().props.open, true);
     tree = render();
-    find(tree, "Content").props.onPointerLeave();
+    find(tree, "Content").props.onPointerLeave({ pointerType: "mouse" });
     t.mock.timers.tick(150);
     assert.equal(render().props.open, false);
 });
@@ -108,7 +115,7 @@ test("keyboard focus opens the explanation and keeps it visible until blur or di
     button.props.ref.current = { matches: () => true };
     button.props.onFocus({ currentTarget: button.props.ref.current });
     assert.equal(render().props.open, true);
-    hoverTarget(tree).props.onPointerLeave();
+    hoverTarget(tree).props.onPointerLeave({ pointerType: "mouse" });
     t.mock.timers.tick(150);
     assert.equal(render().props.open, true);
     button.props.onBlur();
@@ -135,8 +142,74 @@ test("unmount cleanup cancels pending hover dismissal", (t) => {
     t.mock.timers.enable({ apis: ["setTimeout"] });
     const tree = render();
     hoverTarget(tree).props.onPointerEnter({ pointerType: "mouse" });
-    hoverTarget(tree).props.onPointerLeave();
-    state.cleanup();
+    hoverTarget(tree).props.onPointerLeave({ pointerType: "mouse" });
+    state.default.cleanup();
     t.mock.timers.tick(150);
     assert.equal(render().props.open, true);
+});
+
+
+test("touch pointer leave cannot dismiss a tapped explanation", (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const tree = render();
+    tree.props.onOpenChange(true);
+    hoverTarget(tree).props.onPointerLeave({ pointerType: "touch" });
+    find(tree, "Content").props.onPointerLeave({ pointerType: "touch" });
+    t.mock.timers.tick(1000);
+    assert.equal(render().props.open, true);
+    tree.props.onOpenChange(false);
+    assert.equal(render().props.open, false);
+});
+
+test("pointer focus does not open before the first tap toggles; keyboard focus still opens", () => {
+    const tree = render();
+    const button = find(tree, "button");
+    const focus = { currentTarget: { matches: () => true } };
+    button.props.onPointerDown();
+    button.props.onFocus(focus);
+    assert.equal(render().props.open, false);
+    button.props.onPointerUp();
+    tree.props.onOpenChange(true);
+    assert.equal(render().props.open, true);
+    tree.props.onOpenChange(false);
+    assert.equal(render().props.open, false);
+    button.props.onFocus(focus);
+    assert.equal(render().props.open, true);
+    button.props.onBlur();
+    button.props.onPointerDown();
+    button.props.onPointerCancel();
+    button.props.onFocus(focus);
+    assert.equal(render().props.open, true);
+});
+
+test("opening another instance dismisses the previous tooltip and cancels its close timer", (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const first = state.default;
+    const second = instance("second-description");
+    const firstTree = render(first);
+    const secondTree = render(second);
+    firstTree.props.onOpenChange(true);
+    hoverTarget(firstTree).props.onPointerLeave({ pointerType: "mouse" });
+    secondTree.props.onOpenChange(true);
+    assert.equal(render(first).props.open, false);
+    assert.equal(render(second).props.open, true);
+    t.mock.timers.tick(200);
+    assert.equal(render(second).props.open, true);
+    find(firstTree, "button").props.onBlur();
+    assert.equal(render(second).props.open, true);
+    secondTree.props.onOpenChange(false);
+    assert.equal(render(second).props.open, false);
+    firstTree.props.onOpenChange(true);
+    assert.equal(render(first).props.open, true);
+});
+
+test("content is portalled with viewport collision padding and bounded internal scrolling", () => {
+    const tree = render();
+    assert.ok(find(tree, "Portal"));
+    const content = find(tree, "Content");
+    assert.equal(content.props.collisionPadding, 12);
+    assert.equal(content.props.sideOffset, 6);
+    assert.match(content.props.className, /radix-popover-content-available-height/);
+    assert.match(content.props.className, /overflow-y-auto/);
+    assert.match(content.props.className, /100vw/);
 });

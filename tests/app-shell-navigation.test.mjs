@@ -34,6 +34,7 @@ const stubs = {
         useSession() { return ${ref}.session; }
     };`,
     "@/components/ui": `
+        export { Button } from ${JSON.stringify(new URL("components/ui/button.tsx", root).href)};
         export { IconButton } from ${JSON.stringify(new URL("components/ui/icon-button.tsx", root).href)};
         export { Skeleton } from ${JSON.stringify(new URL("components/ui/skeleton.tsx", root).href)};
         export * from ${JSON.stringify(new URL("components/ui/dropdown-menu/dropdown-menu.tsx", root).href)};
@@ -78,6 +79,7 @@ registerHooks({
 const { Breadcrumbs } = await import("../src/components/layout/breadcrumbs.tsx");
 const { Sidebar } = await import("../src/components/layout/sidebar.tsx");
 const { AppShell } = await import("../src/components/layout/app-shell.tsx");
+const { ExpensesHeader } = await import("../src/features/finance/components/expenses/expenses-header.tsx");
 const render = (Component, props) => renderToStaticMarkup(
     Component === Sidebar
         ? React.createElement(Dialog.Root, { open: props.open }, React.createElement(Component, props))
@@ -91,6 +93,7 @@ test("breadcrumbs resolve implemented routes with meaningful labels and no dupli
         ["/finance", [["Finance", "/finance"]]],
         ["/finance/expenses", [["Finance", "/finance"], ["Expenses", "/finance/expenses"]]],
         ["/finance/expenses/", [["Finance", "/finance"], ["Expenses", "/finance/expenses"]]],
+        ["/finance/monthly-breakdown", [["Finance", "/finance"], ["Monthly Breakdown", "/finance/monthly-breakdown"]]],
     ]) {
         const items = resolveBreadcrumbs(path);
         assert.deepEqual(items.map(({ label, href }) => [label, href]), expected);
@@ -102,7 +105,7 @@ test("breadcrumbs resolve implemented routes with meaningful labels and no dupli
 });
 
 test("rendered breadcrumbs link only parents and mark the current page as non-clickable", () => {
-    for (const path of ["/dashboard", "/health", "/finance", "/finance/expenses"]) {
+    for (const path of ["/dashboard", "/health", "/finance", "/finance/expenses", "/finance/monthly-breakdown"]) {
         state.pathname = path;
         const html = render(Breadcrumbs);
         assert.match(html, /aria-label="Breadcrumb"/);
@@ -110,7 +113,7 @@ test("rendered breadcrumbs link only parents and mark the current page as non-cl
         const expected = resolveBreadcrumbs(path);
         assert.ok(html.includes(`aria-current="page" class="truncate text-text-secondary">${expected.at(-1).label}</span>`));
         assert.ok(!html.includes(`href="${path}"`));
-        if (path === "/finance/expenses") {
+        if (expected.length > 1) {
             assert.match(html, /<a href="\/finance"/);
         } else {
             assert.doesNotMatch(html, /<a /);
@@ -221,4 +224,13 @@ test("phone bottom navigation reuses routes, marks Finance on expense pages and 
     assert.ok(shell.includes("pb-[calc(5.5rem+env(safe-area-inset-bottom))]"));
     assert.match(header, /hidden md:inline-flex lg:hidden/);
     assert.match(shell, /lg:pl-62/);
+});
+
+
+test("expense headings and actions remain without repeating the header breadcrumb", () => {
+    const html = render(ExpensesHeader, { onAddExpense() {} });
+    assert.match(html, /<h1[^>]*>Expenses<\/h1>/);
+    assert.match(html, /Track where your money goes/);
+    assert.match(html, /Add expense/);
+    assert.doesNotMatch(html, /Finance \/ Expenses/);
 });

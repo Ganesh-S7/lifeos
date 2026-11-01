@@ -48,8 +48,7 @@ function MonthlyBreakdownContent() {
         <div className="min-w-0 space-y-6">
             <header className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <p className="text-xs text-text-muted">Finance / Monthly breakdown</p>
-                    <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text-primary">Monthly Breakdown</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Monthly Breakdown</h1>
                     <p className="mt-2 max-w-3xl text-sm text-text-secondary">Historical spending and live monthly records. LEFT is income remaining after reported spending, not your bank balance.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">

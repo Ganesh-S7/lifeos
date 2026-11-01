@@ -13,11 +13,7 @@ export function ExpensesHeader({
     return (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <p className="text-xs font-medium text-primary">
-                    Finance / Expenses
-                </p>
-
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-text-primary lg:text-3xl">
+                <h1 className="text-2xl font-semibold tracking-tight text-text-primary lg:text-3xl">
                     Expenses
                 </h1>
 

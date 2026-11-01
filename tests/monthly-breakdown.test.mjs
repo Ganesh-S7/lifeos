@@ -187,6 +187,9 @@ test("charts and plan dialog reuse actual rows and saved targets; SSR loading co
     assert.match(dialog, /value="7000"/);
     const page = render(MonthlyBreakdown);
     assert.match(page, /Loading monthly breakdown/);
+    assert.match(page, /<h1[^>]*>Monthly Breakdown<\/h1>/);
+    assert.match(page, /Historical spending and live monthly records/);
+    assert.doesNotMatch(page, /Finance \/ Monthly breakdown/);
     assert.doesNotMatch(page, /₹33,403|₹34,800|Dec 25/);
     boundary.finance.ready = false;
     boundary.finance.loadError = "private database details";
