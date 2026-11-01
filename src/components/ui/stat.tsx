@@ -19,6 +19,8 @@ interface StatProps {
   action?: ReactNode;
   className?: string;
   compactMobile?: boolean;
+  /** Opt-in content-led phone spacing; default and desktop layouts stay unchanged. */
+  balanceMobileContent?: boolean;
 }
 
 export function Stat({
@@ -34,7 +36,9 @@ export function Stat({
   action,
   className,
   compactMobile = false,
+  balanceMobileContent = false,
 }: StatProps) {
+  const balancedMobile = compactMobile && balanceMobileContent;
   const resolvedTrendTone: TrendTone =
     trendTone ??
     (trend === "up"
@@ -59,7 +63,7 @@ export function Stat({
     <Card
       className={cn(
         "min-w-0 flex flex-col p-4 sm:p-5",
-        compactMobile && "p-3 md:p-5",
+        compactMobile && (balancedMobile ? "px-3 py-4 md:p-5" : "p-3 md:p-5"),
         className,
       )}
     >
@@ -68,7 +72,8 @@ export function Stat({
           <div
             className={cn(
               "flex items-center gap-1.5",
-              compactMobile && "min-h-8 md:min-h-0",
+              compactMobile &&
+                (balancedMobile ? "min-h-4 md:min-h-0" : "min-h-8 md:min-h-0"),
             )}
           >
             <p className="text-xs font-medium text-text-secondary">{label}</p>
@@ -79,6 +84,7 @@ export function Stat({
             className={cn(
               "mt-2 break-words text-2xl font-semibold tabular-nums tracking-tight text-text-primary",
               compactMobile && "mt-1 text-[clamp(1rem,4.8vw,1.25rem)] leading-7 md:mt-2 md:text-2xl",
+              balancedMobile && "mt-2",
             )}
           >
             {value}
@@ -126,6 +132,10 @@ export function Stat({
           className={cn(
             "mt-2",
             compactMobile && "[&_p]:text-[11px] [&_p]:leading-4 md:[&_p]:text-xs md:[&_p]:leading-5",
+            balancedMobile &&
+              (action
+                ? "mt-auto py-2 md:mt-2 md:py-0"
+                : "mt-auto pt-3 md:mt-2 md:pt-0"),
             footerClassName,
           )}
         >
@@ -134,7 +144,12 @@ export function Stat({
       )}
 
       {action && (
-        <div className="mt-auto border-t border-border-subtle pt-3">
+        <div
+          className={cn(
+            "mt-auto border-t border-border-subtle pt-3",
+            balancedMobile && "mt-0 pt-1 md:mt-auto md:pt-3",
+          )}
+        >
           {action}
         </div>
       )}

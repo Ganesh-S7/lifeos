@@ -223,6 +223,7 @@ function FinanceOverviewContent() {
                             {groups.map((group) => (
                                 <Stat
                                     compactMobile
+                                    balanceMobileContent
                                     key={group.kind}
                                     icon={group.icon}
                                     className="md:min-h-48"
@@ -239,7 +240,7 @@ function FinanceOverviewContent() {
                                     action={
                                         <button
                                             type="button"
-                                            className="min-h-11 sm:min-h-0 text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
+                                            className="min-h-11 sm:min-h-0 text-left flex gap-1 items-center max-md:items-end max-md:pb-1 group text-xs font-medium text-primary hover:underline underline-offset-3"
                                             onClick={() => openManage(group.kind)}
                                         >
                                             {group.action} <ArrowRight size={10} className="group-hover:translate-x-0.5 duration-200 ease-in-out" />
@@ -249,6 +250,7 @@ function FinanceOverviewContent() {
                             ))}
                             <Stat
                                 compactMobile
+                                balanceMobileContent
                                 icon={Scale}
                                 className="md:min-h-48"
                                 label="Net worth"
@@ -263,7 +265,7 @@ function FinanceOverviewContent() {
                                 action={
                                     <button
                                         type="button"
-                                        className="min-h-11 sm:min-h-0 text-left flex gap-1 items-center group text-xs font-medium text-primary hover:underline underline-offset-3"
+                                        className="min-h-11 sm:min-h-0 text-left flex gap-1 items-center max-md:items-end max-md:pb-1 group text-xs font-medium text-primary hover:underline underline-offset-3"
                                         onClick={() => setBreakdownOpen(true)}
                                     >
                                         View breakdown <ArrowRight size={10} className="group-hover:translate-x-1 duration-200 ease-in-out" />
@@ -291,6 +293,7 @@ function FinanceOverviewContent() {
                             {monthCards.map((item) => (
                                 <Stat
                                     compactMobile
+                                    balanceMobileContent
                                     key={item.label}
                                     icon={item.icon}
                                     className="md:min-h-30"
